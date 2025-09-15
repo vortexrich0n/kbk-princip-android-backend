@@ -14,8 +14,9 @@ const updateMembershipSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
+  const { userId } = await params;
   try {
     // Verify JWT token
     const payload = verifyToken(request);
@@ -112,8 +113,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
+  const { userId } = await params;
   try {
     // Verify JWT token
     const payload = verifyToken(request);
