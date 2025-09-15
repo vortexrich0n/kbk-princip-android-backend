@@ -54,7 +54,7 @@ export async function PATCH(
     }
 
     // Convert string dates to Date objects
-    const updateData: any = { ...membershipData };
+    const updateData: Record<string, unknown> = { ...membershipData };
     if (updateData.expiresAt) {
       updateData.expiresAt = new Date(updateData.expiresAt);
     }
@@ -63,14 +63,13 @@ export async function PATCH(
     }
 
     // Update or create membership
-    let membership;
     if (user.membership) {
-      membership = await prisma.membership.update({
+      await prisma.membership.update({
         where: { userId },
         data: updateData,
       });
     } else {
-      membership = await prisma.membership.create({
+      await prisma.membership.create({
         data: {
           userId,
           ...updateData,
