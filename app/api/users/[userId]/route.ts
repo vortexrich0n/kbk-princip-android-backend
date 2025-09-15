@@ -35,7 +35,6 @@ export async function PATCH(
       );
     }
 
-    const { userId } = params;
     const body = await request.json();
 
     // Validate input
@@ -55,12 +54,13 @@ export async function PATCH(
     }
 
     // Convert string dates to Date objects
-    const updateData: Record<string, unknown> = { ...membershipData };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData = { ...membershipData } as any;
     if (updateData.expiresAt) {
-      updateData.expiresAt = new Date(updateData.expiresAt);
+      updateData.expiresAt = new Date(updateData.expiresAt as string);
     }
     if (updateData.paidAt) {
-      updateData.paidAt = new Date(updateData.paidAt);
+      updateData.paidAt = new Date(updateData.paidAt as string);
     }
 
     // Update or create membership
@@ -133,8 +133,6 @@ export async function DELETE(
         { status: 403 }
       );
     }
-
-    const { userId } = params;
 
     // Check if user exists
     const user = await prisma.user.findUnique({
