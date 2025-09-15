@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
     const { passwordHash: _, ...userWithoutPassword } = user;
 
     return NextResponse.json({
+      ok: true,
       token,
       user: userWithoutPassword,
     }, { status: 201 });
