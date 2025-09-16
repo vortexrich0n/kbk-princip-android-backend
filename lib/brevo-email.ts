@@ -1,4 +1,4 @@
-const SibApiV3Sdk = require('@sendinblue/client');
+import * as SibApiV3Sdk from '@sendinblue/client';
 
 // Configure API key
 const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
@@ -154,9 +154,9 @@ export async function sendVerificationEmail(email: string, token: string) {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
     console.log(`Email sent successfully to ${email}. Message ID: ${data.messageId}`);
     return { success: true, data };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to send verification email:', error);
-    return { success: false, error: error.message || 'Failed to send email' };
+    return { success: false, error: (error as Error).message || 'Failed to send email' };
   }
 }
 
@@ -253,8 +253,8 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
     console.log(`Password reset email sent to ${email}. Message ID: ${data.messageId}`);
     return { success: true, data };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to send password reset email:', error);
-    return { success: false, error: error.message || 'Failed to send email' };
+    return { success: false, error: (error as Error).message || 'Failed to send email' };
   }
 }
