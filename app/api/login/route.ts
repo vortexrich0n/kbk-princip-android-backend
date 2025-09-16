@@ -16,19 +16,10 @@ export async function POST(request: NextRequest) {
     // Validate input
     const { email, password } = loginSchema.parse(body);
 
-    // Find user by email - select only existing columns
+    // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-        email: true,
-        passwordHash: true,
-        name: true,
-        role: true,
-        qrData: true,
-        emailVerified: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
         membership: true
       }
     });
