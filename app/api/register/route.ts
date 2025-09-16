@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Return user data and token (excluding password hash)
-    const { passwordHash: _, ...userWithoutPassword } = user;
+    const { passwordHash, ...userWithoutPassword } = user;
 
     return NextResponse.json({
       ok: true,

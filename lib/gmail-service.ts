@@ -2,7 +2,7 @@
 // FREE: 500 emails/day, works with ALL email addresses!
 // Fast delivery and excellent reliability
 
-const nodemailer = require('nodemailer');
+import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
 // Create reusable transporter using Gmail SMTP
