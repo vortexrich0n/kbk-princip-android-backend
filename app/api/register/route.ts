@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { sendVerificationEmail } from '@/lib/brevo-email';
+// import { sendVerificationEmail } from '@/lib/brevo-email';
+import { sendVerificationEmail } from '@/lib/mailersend-service';
 import crypto from 'crypto';
 
 const registerSchema = z.object({
@@ -55,13 +56,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send verification email
-    const emailResult = await sendVerificationEmail(email, verificationToken);
+    // Send verification email using MailerSend (faster than Brevo)
+    const emailResult = await sendVerificationEmail(email, name || null, verificationToken);
     if (!emailResult.success) {
       console.error('Failed to send verification email:', emailResult.error);
       // Continue registration even if email fails
     } else {
-      console.log('Verification email sent successfully to:', email);
+      console.log('✅ MailerSend: Verification email sent successfully to:', email);
     }
 
     // Create JWT token

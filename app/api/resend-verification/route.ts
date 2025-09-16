@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendVerificationEmail } from '@/lib/brevo-email';
+// import { sendVerificationEmail } from '@/lib/brevo-email';
+import { sendVerificationEmail } from '@/lib/mailersend-service';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
@@ -57,8 +58,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send verification email
-    const emailResult = await sendVerificationEmail(email, verificationToken);
+    // Send verification email using MailerSend
+    const emailResult = await sendVerificationEmail(email, user.name, verificationToken);
 
     if (!emailResult.success) {
       console.error('Failed to send verification email:', emailResult.error);
