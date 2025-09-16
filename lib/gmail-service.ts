@@ -11,7 +11,7 @@ const createTransporter = (): Transporter => {
     service: 'gmail',
     auth: {
       user: process.env.GMAIL_USER || 'principkbk@gmail.com', // Your Gmail address
-      pass: process.env.GMAIL_APP_PASSWORD || 'utdngopjbmhopmyj' // Your Gmail App Password (16 characters)
+      pass: process.env.GMAIL_APP_PASSWORD || 'nzehwrtrdzcxskst' // Your Gmail App Password (16 characters)
     }
   });
 };
