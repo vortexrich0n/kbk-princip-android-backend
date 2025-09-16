@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id                String      @id @default(cuid())
-  email             String      @unique
-  passwordHash      String
-  name              String?
-  role              String      @default("USER")
-  qrData            String?
-  createdAt         DateTime    @default(now())
-  emailVerified     Boolean     @default(false)
-  verificationToken String?     @unique
-  checkins          Checkin[]
-  membership        Membership?
+  id                  String      @id @default(cuid())
+  email               String      @unique
+  passwordHash        String
+  name                String?
+  role                String      @default("USER")
+  qrData              String?
+  createdAt           DateTime    @default(now())
+  emailVerified       Boolean     @default(false)
+  verificationToken   String?     @unique
+  verificationExpires DateTime?
+  checkins            Checkin[]
+  membership          Membership?
 }
 
 model Membership {

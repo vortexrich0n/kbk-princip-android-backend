@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { sendVerificationEmail } from '@/lib/email';
+import crypto from 'crypto';
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -33,18 +35,32 @@ export async function POST(request: NextRequest) {
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Create user
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Create user with verification token
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
         name,
         role: 'USER',
+        emailVerified: false,
+        verificationToken,
+        verificationExpires,
       },
       include: {
         membership: true,
       },
     });
+
+    // Send verification email
+    const emailResult = await sendVerificationEmail(email, verificationToken);
+    if (!emailResult.success) {
+      console.error('Failed to send verification email:', emailResult.error);
+      // Continue registration even if email fails
+    }
 
     // Create JWT token
     const JWT_SECRET = process.env.JWT_SECRET;
@@ -72,6 +88,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       token,
       user: userWithoutPassword,
+      message: 'Registration successful. Please check your email to verify your account.',
     }, { status: 201 });
 
   } catch (error) {
