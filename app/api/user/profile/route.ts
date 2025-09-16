@@ -6,8 +6,6 @@ import { prisma } from '@/lib/prisma';
 // Schema for profile update
 const updateProfileSchema = z.object({
   name: z.string().min(1).optional(),
-  phone: z.string().optional().nullable(),
-  bio: z.string().optional().nullable(),
 });
 
 // GET current user profile
@@ -62,9 +60,6 @@ export async function GET(request: NextRequest) {
       name: user.name,
       role: user.role,
       emailVerified: user.emailVerified,
-      phone: user.phone,
-      bio: user.bio,
-      profileImageUrl: user.profileImageUrl,
       membership: user.membership,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -128,9 +123,6 @@ export async function PATCH(request: NextRequest) {
         name: true,
         role: true,
         emailVerified: true,
-        phone: true,
-        bio: true,
-        profileImageUrl: true,
         updatedAt: true,
       },
     });
