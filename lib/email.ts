@@ -5,10 +5,16 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function sendVerificationEmail(email: string, token: string) {
   const verificationUrl = `${process.env.APP_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/verify-email?token=${token}`;
 
+  // TEMPORARY: Resend is in test mode and can only send to account owner
+  // TODO: Remove this when domain is verified on Resend
+  const recipientEmail = 'zgffitudok@gmail.com';
+
+  console.log(`Sending verification email to: ${recipientEmail} (requested for: ${email})`);
+
   try {
     const { data, error } = await resend.emails.send({
       from: 'KBK Princip <onboarding@resend.dev>',
-      to: email,
+      to: recipientEmail,
       subject: 'Verifikujte vašu email adresu - KBK Princip',
       html: `
         <!DOCTYPE html>
@@ -170,10 +176,13 @@ export async function sendVerificationEmail(email: string, token: string) {
 export async function sendPasswordResetEmail(email: string, token: string) {
   const resetUrl = `${process.env.APP_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/reset-password?token=${token}`;
 
+  // TEMPORARY: Resend is in test mode and can only send to account owner
+  const recipientEmail = 'zgffitudok@gmail.com';
+
   try {
     const { data, error } = await resend.emails.send({
       from: 'KBK Princip <onboarding@resend.dev>',
-      to: email,
+      to: recipientEmail,
       subject: 'Resetovanje lozinke - KBK Princip',
       html: `
         <!DOCTYPE html>
