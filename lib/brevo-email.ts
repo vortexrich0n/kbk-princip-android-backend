@@ -7,7 +7,7 @@ export async function sendVerificationEmail(email: string, token: string) {
   const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
   // Set the API key using the proper method
-  const apiKey = process.env.BREVO_API_KEY || '';
+  const apiKey = (process.env.BREVO_API_KEY || '').trim();
   apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, apiKey);
 
   const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
@@ -167,7 +167,8 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
   // Configure API instance with authentication
   const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-  apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY as string);
+  const apiKey = (process.env.BREVO_API_KEY || '').trim();
+  apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, apiKey);
 
   const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
 
