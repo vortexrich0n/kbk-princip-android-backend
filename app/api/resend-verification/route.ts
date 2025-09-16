@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-// import { sendVerificationEmail } from '@/lib/brevo-email';
 import { sendVerificationEmail } from '@/lib/mailersend-service';
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 
 export async function POST(request: NextRequest) {
   try {
