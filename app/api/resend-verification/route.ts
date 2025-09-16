@@ -6,35 +6,6 @@ import jwt from 'jsonwebtoken';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    const JWT_SECRET = process.env.JWT_SECRET;
-
-    if (!JWT_SECRET) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    // Verify JWT token
-    try {
-      jwt.verify(token, JWT_SECRET);
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const { email } = body;
 

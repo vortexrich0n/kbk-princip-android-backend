@@ -1,12 +1,14 @@
 import * as SibApiV3Sdk from '@sendinblue/client';
 
-// Configure API key
-const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-const apiKey = apiInstance.authentications['apiKey'];
-apiKey.apiKey = process.env.BREVO_API_KEY;
-
 export async function sendVerificationEmail(email: string, token: string) {
   const verificationUrl = `${process.env.APP_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/verify-email?token=${token}`;
+
+  // Configure API instance with authentication
+  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
+  // Set the API key using the proper method
+  const apiKey = process.env.BREVO_API_KEY || '';
+  apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, apiKey);
 
   const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
 
@@ -162,6 +164,10 @@ export async function sendVerificationEmail(email: string, token: string) {
 
 export async function sendPasswordResetEmail(email: string, token: string) {
   const resetUrl = `${process.env.APP_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/reset-password?token=${token}`;
+
+  // Configure API instance with authentication
+  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+  apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY as string);
 
   const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
 
