@@ -206,12 +206,12 @@ KBK Princip Tim
       messageId: response.headers?.['x-message-id'] || 'sent'
     };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ MailerSend error:', error);
 
     return {
       success: false,
-      error: error.message || 'Failed to send email'
+      error: (error as Error).message || 'Failed to send email'
     };
   }
 }
@@ -279,11 +279,11 @@ export async function sendPasswordResetEmail(
       messageId: response.headers?.['x-message-id'] || 'sent'
     };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ MailerSend error:', error);
     return {
       success: false,
-      error: error.message
+      error: (error as Error).message
     };
   }
 }
