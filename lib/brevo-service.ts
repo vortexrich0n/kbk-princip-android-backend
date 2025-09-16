@@ -120,7 +120,7 @@ export async function sendVerificationEmail(email: string, token: string) {
     console.error('❌ Brevo error:', error);
     return {
       success: false,
-      error: (error as any).response?.body?.message || (error as Error).message || 'Failed to send email'
+      error: (error as unknown as {response?: {body?: {message?: string}}}).response?.body?.message || (error as Error).message || 'Failed to send email'
     };
   }
 }
@@ -178,7 +178,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     console.error('Failed to send password reset email:', error);
     return {
       success: false,
-      error: (error as any).response?.body?.message || (error as Error).message || 'Failed to send email'
+      error: (error as unknown as {response?: {body?: {message?: string}}}).response?.body?.message || (error as Error).message || 'Failed to send email'
     };
   }
 }
