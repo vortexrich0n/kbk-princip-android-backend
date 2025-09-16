@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import { sendVerificationEmail } from '@/lib/mailersend-service';
-import { sendVerificationEmail } from '@/lib/resend-service';
+import { sendVerificationEmail } from '@/lib/gmail-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,26 +16,26 @@ export async function POST(request: NextRequest) {
     // Test token
     const testToken = 'test-token-' + Date.now();
 
-    // Send test email using MailerSend
-    const result = await sendVerificationEmail(email, 'Test User', testToken);
+    // Send test email using Gmail SMTP
+    const result = await sendVerificationEmail(email, testToken);
 
     return NextResponse.json({
       ok: result.success,
       message: result.success ? 'Test email sent successfully' : 'Failed to send test email',
       error: result.error,
-      apiKeyPresent: !!process.env.MAILERSEND_API_KEY,
-      apiKeyLength: process.env.MAILERSEND_API_KEY?.length || 0,
-      provider: 'Resend'
+      apiKeyPresent: !!process.env.GMAIL_USER && !!process.env.GMAIL_APP_PASSWORD,
+      gmailUser: process.env.GMAIL_USER ? process.env.GMAIL_USER.substring(0, 3) + '***' : 'Not set',
+      provider: 'Gmail SMTP'
     });
 
   } catch (error) {
-    console.error('Test Brevo error:', error);
+    console.error('Test Gmail SMTP error:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error',
         details: (error as Error).message,
-        apiKeyPresent: !!process.env.BREVO_API_KEY,
-        apiKeyLength: process.env.BREVO_API_KEY?.length || 0
+        apiKeyPresent: !!process.env.GMAIL_USER && !!process.env.GMAIL_APP_PASSWORD,
+        gmailUser: process.env.GMAIL_USER ? process.env.GMAIL_USER.substring(0, 3) + '***' : 'Not set'
       },
       { status: 500 }
     );

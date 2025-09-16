@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-// import { sendVerificationEmail } from '@/lib/mailersend-service';
-import { sendVerificationEmail } from '@/lib/resend-service';
+import { sendVerificationEmail } from '@/lib/gmail-service';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -57,8 +56,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send verification email using MailerSend
-    const emailResult = await sendVerificationEmail(email, user.name, verificationToken);
+    // Send verification email using Gmail SMTP
+    const emailResult = await sendVerificationEmail(email, verificationToken);
 
     if (!emailResult.success) {
       console.error('Failed to send verification email:', emailResult.error);
