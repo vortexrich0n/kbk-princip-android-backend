@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
+export async function GET() {
+  return NextResponse.json({
+    message: 'Use POST method with migration key to run migrations'
+  });
+}
+
 export async function POST(request: Request) {
   try {
     // Check for migration key
