@@ -144,11 +144,11 @@ export async function sendVerificationEmail(email: string, token: string) {
 
   sendSmtpEmail.sender = {
     name: 'KBK Princip',
-    email: 'noreply@kbkprincip.com'
+    email: 'zgffitudok@gmail.com'
   };
   sendSmtpEmail.to = [{ email: email }];
   sendSmtpEmail.replyTo = {
-    email: 'support@kbkprincip.com',
+    email: 'zgffitudok@gmail.com',
     name: 'KBK Princip Support'
   };
 
@@ -252,7 +252,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
   sendSmtpEmail.sender = {
     name: 'KBK Princip',
-    email: 'noreply@kbkprincip.com'
+    email: 'zgffitudok@gmail.com'
   };
   sendSmtpEmail.to = [{ email: email }];
 
