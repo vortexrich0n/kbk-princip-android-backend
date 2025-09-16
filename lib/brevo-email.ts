@@ -154,7 +154,7 @@ export async function sendVerificationEmail(email: string, token: string) {
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log(`Email sent successfully to ${email}. Message ID: ${data.messageId}`);
+    console.log(`Email sent successfully to ${email}`);
     return { success: true, data };
   } catch (error) {
     console.error('Failed to send verification email:', error);
@@ -257,7 +257,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log(`Password reset email sent to ${email}. Message ID: ${data.messageId}`);
+    console.log(`Password reset email sent to ${email}`);
     return { success: true, data };
   } catch (error) {
     console.error('Failed to send password reset email:', error);
