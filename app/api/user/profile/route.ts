@@ -62,7 +62,6 @@ export async function GET(request: NextRequest) {
       emailVerified: user.emailVerified,
       membership: user.membership,
       createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
     };
 
     return NextResponse.json(userResponse);
@@ -113,17 +112,13 @@ export async function PATCH(request: NextRequest) {
     // Update user profile
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        ...validatedData,
-        updatedAt: new Date(),
-      },
+      data: validatedData,
       select: {
         id: true,
         email: true,
         name: true,
         role: true,
         emailVerified: true,
-        updatedAt: true,
       },
     });
 
