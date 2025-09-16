@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendVerificationEmail } from '@/lib/mailersend-service';
+// import { sendVerificationEmail } from '@/lib/mailersend-service';
+import { sendVerificationEmail } from '@/lib/resend-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
       error: result.error,
       apiKeyPresent: !!process.env.MAILERSEND_API_KEY,
       apiKeyLength: process.env.MAILERSEND_API_KEY?.length || 0,
-      provider: 'MailerSend'
+      provider: 'Resend'
     });
 
   } catch (error) {

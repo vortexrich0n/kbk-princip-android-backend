@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { sendVerificationEmail } from '@/lib/mailersend-service';
+// import { sendVerificationEmail } from '@/lib/mailersend-service';
+import { sendVerificationEmail } from '@/lib/resend-service';
 import crypto from 'crypto';
 
 const registerSchema = z.object({
