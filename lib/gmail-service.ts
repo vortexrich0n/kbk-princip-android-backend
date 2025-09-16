@@ -10,8 +10,8 @@ const createTransporter = (): Transporter => {
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.GMAIL_USER || 'zgffitudok@gmail.com', // Your Gmail address
-      pass: process.env.GMAIL_APP_PASSWORD || 'nahbfvtbidldzpid' // Your Gmail App Password (16 characters)
+      user: process.env.GMAIL_USER || 'principkbk@gmail.com', // Your Gmail address
+      pass: process.env.GMAIL_APP_PASSWORD || 'utdngopjbmhopmyj' // Your Gmail App Password (16 characters)
     }
   });
 };
@@ -170,7 +170,7 @@ export async function sendVerificationEmail(
               <p><strong>KBK Princip</strong></p>
               <p>© 2025 Sva prava zadržana</p>
               <p style="font-size: 12px;">
-                Ovaj email je poslat sa ${process.env.GMAIL_USER || 'zgffitudok@gmail.com'}
+                Ovaj email je poslat sa ${process.env.GMAIL_USER || 'principkbk@gmail.com'}
               </p>
             </div>
           </div>
@@ -180,7 +180,7 @@ export async function sendVerificationEmail(
     `;
 
     const info = await transporter.sendMail({
-      from: `"KBK Princip" <${process.env.GMAIL_USER || 'zgffitudok@gmail.com'}>`,
+      from: `"KBK Princip" <${process.env.GMAIL_USER || 'principkbk@gmail.com'}>`,
       to: toEmail,
       subject: '✉️ Verifikujte vašu email adresu - KBK Princip',
       html: htmlContent,
@@ -305,7 +305,7 @@ export async function sendPasswordResetEmail(
     `;
 
     const info = await transporter.sendMail({
-      from: `"KBK Princip" <${process.env.GMAIL_USER || 'zgffitudok@gmail.com'}>`,
+      from: `"KBK Princip" <${process.env.GMAIL_USER || 'principkbk@gmail.com'}>`,
       to: toEmail,
       subject: '🔐 Reset lozinke - KBK Princip',
       html: htmlContent,
