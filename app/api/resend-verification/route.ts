@@ -26,10 +26,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify JWT token
-    let decoded: any;
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
+      jwt.verify(token, JWT_SECRET);
+    } catch {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 401 }
