@@ -16,9 +16,9 @@ export async function sendVerificationEmail(
   try {
     const verificationUrl = `${process.env.NEXTAUTH_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/verify-email?token=${verificationToken}`;
 
-    // Configure sender
+    // Configure sender - MUST match your MailerSend verified domain!
     const sentFrom = new Sender(
-      process.env.MAILERSEND_FROM_EMAIL || "noreply@trial-351ndgw96qzgzqx8.mlsender.net",
+      process.env.MAILERSEND_FROM_EMAIL || "noreply@test-68zxl27v7634j905.mlsender.net",
       "KBK Princip"
     );
 
@@ -225,7 +225,7 @@ export async function sendPasswordResetEmail(
     const resetUrl = `${process.env.NEXTAUTH_URL || 'https://kbk-princip-android-backend.vercel.app'}/reset-password?token=${resetToken}`;
 
     const sentFrom = new Sender(
-      process.env.MAILERSEND_FROM_EMAIL || "noreply@trial-351ndgw96qzgzqx8.mlsender.net",
+      process.env.MAILERSEND_FROM_EMAIL || "noreply@test-68zxl27v7634j905.mlsender.net",
       "KBK Princip"
     );
 
