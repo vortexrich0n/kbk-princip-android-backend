@@ -27,14 +27,19 @@ function ResetPasswordForm() {
 
     if (isAndroid || isIOS) {
       setIsMobile(true);
-      // Pokušaj da otvori app putem deep link
+      // Odmah pokušaj da otvori app putem deep link
       const appScheme = 'kbkprincip://reset-password?token=' + token;
       window.location.href = appScheme;
 
-      // Ako app nije instalirana, prikaži fallback nakon 2 sekunde
+      // Prikaži poruku nakon 1 sekunde
       setTimeout(() => {
-        setMessage('Ako aplikacija nije otvorena automatski, možete resetovati lozinku ovde ili otvoriti KBK Princip aplikaciju ručno.');
-      }, 2000);
+        setMessage('Aplikacija bi trebalo da se otvori automatski...');
+      }, 1000);
+
+      // Ako app nije instalirana, prikaži fallback nakon 3 sekunde
+      setTimeout(() => {
+        setError('Ako aplikacija nije otvorena, instalirajte KBK Princip aplikaciju iz Play Store.');
+      }, 3000);
     }
   }, [token]);
 
@@ -107,6 +112,34 @@ function ResetPasswordForm() {
         <div className="bg-gray-900 p-8 rounded-lg shadow-lg max-w-md w-full">
           <h1 className="text-2xl font-bold text-red-600 mb-6">Greška</h1>
           <p className="text-gray-300">Nevažeći reset link. Molimo zatražite novi.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Ako je mobilni uređaj, prikaži samo poruku o preusmeravanju
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="bg-gray-900 p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+          <div className="mb-6">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-4">KBK PRINCIP</h1>
+          {message && (
+            <p className="text-gray-300 mb-4">{message}</p>
+          )}
+          {error && (
+            <div className="bg-red-600/20 border border-red-600 text-red-400 px-4 py-3 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
+          <a
+            href={`kbkprincip://reset-password?token=${token}`}
+            className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg mt-4"
+          >
+            Otvori aplikaciju
+          </a>
         </div>
       </div>
     );
