@@ -34,6 +34,7 @@ model Membership {
   paidAt     DateTime?
   paidAmount Float?
   createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
