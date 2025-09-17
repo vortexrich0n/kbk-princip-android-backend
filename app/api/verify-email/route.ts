@@ -43,6 +43,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Generate JWT token for auto-login
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET;
+    const autoLoginToken = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     // Return HTML response that redirects to app or shows success message
     const html = `
       <!DOCTYPE html>
@@ -50,6 +59,7 @@ export async function GET(request: NextRequest) {
         <head>
           <meta charset="UTF-8">
           <title>Email Verified - KBK Princip</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -68,6 +78,7 @@ export async function GET(request: NextRequest) {
               border-radius: 20px;
               backdrop-filter: blur(10px);
               box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+              max-width: 90%;
             }
             .logo {
               font-size: 64px;
@@ -103,7 +114,34 @@ export async function GET(request: NextRequest) {
             .button:hover {
               background-color: #991B1B;
             }
+            #mobile-redirect {
+              display: none;
+              margin-top: 20px;
+              padding: 20px;
+              background: rgba(220, 38, 38, 0.1);
+              border: 1px solid #DC2626;
+              border-radius: 8px;
+            }
           </style>
+          <script>
+            // Detektuj mobilni uređaj i preusmeri na app
+            window.onload = function() {
+              const userAgent = navigator.userAgent.toLowerCase();
+              const isAndroid = userAgent.includes('android');
+              const isIOS = userAgent.includes('iphone') || userAgent.includes('ipad');
+
+              if (isAndroid || isIOS) {
+                // Pokušaj da otvori app sa auto-login tokenom
+                const appScheme = 'kbkprincip://verify-email?token=${autoLoginToken}&email=${user.email}';
+                window.location.href = appScheme;
+
+                // Prikaži fallback poruku
+                setTimeout(function() {
+                  document.getElementById('mobile-redirect').style.display = 'block';
+                }, 2000);
+              }
+            }
+          </script>
         </head>
         <body>
           <div class="container">
@@ -112,7 +150,16 @@ export async function GET(request: NextRequest) {
             <div class="success-icon">✓</div>
             <h2>Email uspešno verifikovan!</h2>
             <p>Vaš nalog je sada aktiviran. Možete se prijaviti u aplikaciju.</p>
-            <p style="font-size: 14px; color: #999;">Možete zatvoriti ovu stranicu i vratiti se u aplikaciju.</p>
+
+            <div id="mobile-redirect">
+              <p style="font-size: 16px;">Aplikacija bi trebalo da se otvori automatski.</p>
+              <a href="kbkprincip://login?verified=true" class="button">Otvori aplikaciju</a>
+              <p style="font-size: 14px; color: #999; margin-top: 20px;">
+                Ako aplikacija nije otvorena, instalirajte KBK Princip aplikaciju iz Play Store ili App Store.
+              </p>
+            </div>
+
+            <p style="font-size: 14px; color: #999;">Možete zatvoriti ovu stranicu.</p>
           </div>
         </body>
       </html>

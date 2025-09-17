@@ -9,6 +9,7 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
@@ -16,6 +17,24 @@ function ResetPasswordForm() {
   useEffect(() => {
     if (!token) {
       setError('Nevažeći reset link');
+      return;
+    }
+
+    // Detektuj mobilni uređaj
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isAndroid = userAgent.includes('android');
+    const isIOS = userAgent.includes('iphone') || userAgent.includes('ipad');
+
+    if (isAndroid || isIOS) {
+      setIsMobile(true);
+      // Pokušaj da otvori app putem deep link
+      const appScheme = 'kbkprincip://reset-password?token=' + token;
+      window.location.href = appScheme;
+
+      // Ako app nije instalirana, prikaži fallback nakon 2 sekunde
+      setTimeout(() => {
+        setMessage('Ako aplikacija nije otvorena automatski, možete resetovati lozinku ovde ili otvoriti KBK Princip aplikaciju ručno.');
+      }, 2000);
     }
   }, [token]);
 
@@ -56,10 +75,22 @@ function ResetPasswordForm() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage('Lozinka je uspešno resetovana! Preusmeravamo vas na login...');
-        setTimeout(() => {
-          router.push('/');
-        }, 3000);
+        setMessage('Lozinka je uspešno resetovana!');
+
+        if (isMobile) {
+          // Za mobilne uređaje, otvori app
+          setTimeout(() => {
+            const appScheme = 'kbkprincip://login?passwordReset=true';
+            window.location.href = appScheme;
+          }, 1500);
+
+          setTimeout(() => {
+            setMessage('Lozinka je uspešno resetovana! Otvorite KBK Princip aplikaciju da biste se ulogovali sa novom lozinkom.');
+          }, 3000);
+        } else {
+          // Za desktop, prikaži poruku
+          setMessage('Lozinka je uspešno resetovana! Možete se sada ulogovati u aplikaciji sa novom lozinkom.');
+        }
       } else {
         setError(data.error || 'Greška pri resetovanju lozinke');
       }
