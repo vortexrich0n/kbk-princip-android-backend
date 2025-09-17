@@ -18,6 +18,8 @@ model User {
   emailVerified       Boolean     @default(false)
   verificationToken   String?     @unique
   verificationExpires DateTime?
+  resetToken          String?     @unique
+  resetTokenExpires   DateTime?
   checkins            Checkin[]
   membership          Membership?
 }

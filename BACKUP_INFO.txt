@@ -1,0 +1,42 @@
+🔒 BACKUP INFORMACIJE - KBK PRINCIP BACKEND
+==========================================
+
+RADNA VERZIJA (NE BRISATI OVE INFORMACIJE!)
+-------------------------------------------
+Git Commit: 9ba926d
+Datum: 15. Januar 2025
+Status: ✅ POTPUNO FUNKCIONALNA
+
+PRODUCTION URL
+--------------
+https://kbk-princip-android-backend.vercel.app
+
+AKO SE BILO ŠTA POKVARI - VRATI OVAKO
+--------------------------------------
+git checkout main
+git reset --hard 9ba926d
+git push --force origin main
+
+ILI PREKO VERCEL DASHBOARD
+--------------------------
+1. Idi na https://vercel.com
+2. Klikni na projekat
+3. Idi na "Deployments"
+4. Nađi deployment od pre 15. januara
+5. Klikni "..." → "Promote to Production"
+
+TRENUTNE GRANE
+--------------
+- main (production) ✅
+- development (za testiranje)
+
+VAŽNO: UVEK RADI NA development GRANI!
+--------------------------------------
+git checkout development
+# radi izmene...
+git push origin development
+# testiraj...
+# tek kad radi:
+git checkout main
+git merge development
+git push origin main
