@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import jwt from 'jsonwebtoken';
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,8 +45,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Generate JWT token for auto-login
-    const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET;
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production-123456789';
     const autoLoginToken = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       JWT_SECRET,
