@@ -157,8 +157,9 @@ export async function GET(request: NextRequest) {
 
               if (isAndroid || isIOS) {
                 // Pokušaj da otvori app sa auto-login tokenom
-                const appScheme = 'kbkprincip://verify-email?token=' + encodeURIComponent('${autoLoginToken}') + '&email=' + encodeURIComponent('${updatedUser.email}');
+                const appScheme = 'kbkprincip://verify-email?token=${encodeURIComponent('${autoLoginToken}')}&email=${encodeURIComponent('${updatedUser.email}')}';
                 window.location.href = appScheme;
+                console.log('Opening app with scheme:', appScheme);
 
                 // Prikaži fallback poruku
                 setTimeout(function() {
