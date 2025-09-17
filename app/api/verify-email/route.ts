@@ -35,22 +35,47 @@ export async function GET(request: NextRequest) {
     }
 
     // Update user to mark email as verified
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         emailVerified: true,
         verificationToken: null,
         verificationExpires: null,
       },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        emailVerified: true,
+        membership: {
+          select: {
+            active: true,
+            type: true,
+            expiresAt: true,
+          },
+        },
+      },
     });
 
-    // Generate JWT token for auto-login
+    // Generate JWT token for auto-login with full user data
     const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production-123456789';
     const autoLoginToken = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      {
+        userId: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        name: updatedUser.name || updatedUser.email.split('@')[0]
+      },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    console.log('Generated auto-login token for email verification:', {
+      token: autoLoginToken,
+      email: updatedUser.email,
+      userId: updatedUser.id
+    });
 
     // Return HTML response that redirects to app or shows success message
     const html = `
@@ -132,7 +157,7 @@ export async function GET(request: NextRequest) {
 
               if (isAndroid || isIOS) {
                 // Pokušaj da otvori app sa auto-login tokenom
-                const appScheme = 'kbkprincip://verify-email?token=${autoLoginToken}&email=${user.email}';
+                const appScheme = 'kbkprincip://verify-email?token=' + encodeURIComponent('${autoLoginToken}') + '&email=' + encodeURIComponent('${updatedUser.email}');
                 window.location.href = appScheme;
 
                 // Prikaži fallback poruku
@@ -153,7 +178,7 @@ export async function GET(request: NextRequest) {
 
             <div id="mobile-redirect">
               <p style="font-size: 16px;">Aplikacija bi trebalo da se otvori automatski.</p>
-              <a href="kbkprincip://login?verified=true" class="button">Otvori aplikaciju</a>
+              <a href="kbkprincip://verify-email?token=${encodeURIComponent(autoLoginToken)}&email=${encodeURIComponent(updatedUser.email)}" class="button">Otvori aplikaciju</a>
               <p style="font-size: 14px; color: #999; margin-top: 20px;">
                 Ako aplikacija nije otvorena, instalirajte KBK Princip aplikaciju iz Play Store ili App Store.
               </p>
