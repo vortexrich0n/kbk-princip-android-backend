@@ -52,15 +52,15 @@ export async function GET(request: NextRequest) {
     const fourHoursAgo = new Date();
     fourHoursAgo.setHours(fourHoursAgo.getHours() - 4);
 
-    const recentCheckin = await prisma.checkin.findFirst({
+    const recentCheckin = await prisma.attendance.findFirst({
       where: {
         userId: user.id,
-        createdAt: {
+        checkInTime: {
           gte: fourHoursAgo
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        checkInTime: 'desc'
       }
     });
 
@@ -69,16 +69,16 @@ export async function GET(request: NextRequest) {
     let cooldownRemaining = null;
 
     if (!recentCheckin && membershipActive) {
-      await prisma.checkin.create({
+      await prisma.attendance.create({
         data: {
           userId: user.id,
-          via: 'QR_SCAN'
+          qrCode: qrCode
         }
       });
       checkedInNow = true;
     } else if (recentCheckin && membershipActive) {
       // Calculate remaining cooldown time
-      const timeSinceLastCheckin = now.getTime() - new Date(recentCheckin.createdAt).getTime();
+      const timeSinceLastCheckin = now.getTime() - new Date(recentCheckin.checkInTime).getTime();
       const fourHoursInMs = 4 * 60 * 60 * 1000;
       const remainingMs = fourHoursInMs - timeSinceLastCheckin;
 
@@ -91,10 +91,10 @@ export async function GET(request: NextRequest) {
 
     // Get total checkins for this month
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthlyCheckins = await prisma.checkin.count({
+    const monthlyCheckins = await prisma.attendance.count({
       where: {
         userId: user.id,
-        createdAt: {
+        checkInTime: {
           gte: firstDayOfMonth
         }
       }

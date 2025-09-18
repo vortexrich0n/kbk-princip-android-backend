@@ -36,12 +36,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all checkins for the user
-    const checkins = await prisma.checkin.findMany({
+    const checkins = await prisma.attendance.findMany({
       where: {
         userId: userId
       },
       orderBy: {
-        createdAt: 'desc'
+        checkInTime: 'desc'
       }
     });
 
@@ -50,10 +50,10 @@ export async function GET(request: NextRequest) {
     firstDayOfMonth.setDate(1);
     firstDayOfMonth.setHours(0, 0, 0, 0);
 
-    const monthlyCount = await prisma.checkin.count({
+    const monthlyCount = await prisma.attendance.count({
       where: {
         userId: userId,
-        createdAt: {
+        checkInTime: {
           gte: firstDayOfMonth
         }
       }
