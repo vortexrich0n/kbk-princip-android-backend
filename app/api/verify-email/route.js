@@ -29,9 +29,19 @@ export async function GET(request) {
       { expiresIn: '7d' }
     );
 
-    // Redirect to Android app with deep link
-    const successUrl = `kbkprincip://verify-email?token=${jwtToken}&email=${encodeURIComponent(user.email)}`;
-    return NextResponse.redirect(successUrl);
+    // Return JSON response instead of redirect
+    return NextResponse.json({
+      ok: true,
+      message: 'Email verified successfully',
+      token: jwtToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        emailVerified: true
+      }
+    });
 
   } catch (error) {
     console.error('Email verification error:', error);

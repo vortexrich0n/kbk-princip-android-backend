@@ -3,7 +3,8 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendVerificationEmail(email: string, token: string) {
-  const verificationUrl = `${process.env.APP_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/verify-email?token=${token}`;
+  // Use the web page instead of API endpoint
+  const verificationUrl = `${process.env.APP_URL || 'https://kbk-princip-android-backend.vercel.app'}/verify-email?token=${token}`;
 
   // TEMPORARY: Resend is in test mode and can only send to account owner
   // TODO: Remove this when domain is verified on Resend
