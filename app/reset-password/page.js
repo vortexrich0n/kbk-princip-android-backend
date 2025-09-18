@@ -61,13 +61,8 @@ function ResetPasswordContent() {
   };
 
   const openApp = () => {
-    // Try to open the app with custom scheme
+    // Simply try to open the app - NO automatic redirect
     window.location.href = 'kbkprincip://login';
-
-    // Show message after attempting to open app
-    setTimeout(() => {
-      alert('If the app didn\'t open, please open it manually from your home screen.');
-    }, 1000);
   };
 
   return (
@@ -162,8 +157,11 @@ function ResetPasswordContent() {
                 fontSize: '16px',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
+                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)',
+                transition: 'background-color 0.2s'
               }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#B91C1C'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#DC2626'}
             >
               Reset Password
             </button>
@@ -208,8 +206,11 @@ function ResetPasswordContent() {
               fontWeight: 'bold',
               width: '100%',
               marginBottom: '15px',
-              boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
+              boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)',
+              transition: 'background-color 0.2s'
             }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#B91C1C'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#DC2626'}
           >
             Open KBK Princip App
           </button>

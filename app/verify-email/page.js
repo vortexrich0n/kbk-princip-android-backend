@@ -39,13 +39,8 @@ function VerifyEmailContent() {
   }, [searchParams]);
 
   const openApp = () => {
-    // Try to open the app with custom scheme
+    // Simply try to open the app - NO automatic redirect
     window.location.href = 'kbkprincip://login';
-
-    // Show message after attempting to open app
-    setTimeout(() => {
-      alert('If the app didn\'t open, please open it manually from your home screen.');
-    }, 1000);
   };
 
   return (
@@ -96,14 +91,17 @@ function VerifyEmailContent() {
               fontWeight: 'bold',
               width: '100%',
               marginBottom: '15px',
-              boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
+              boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)',
+              transition: 'background-color 0.2s'
             }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#B91C1C'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#DC2626'}
           >
             Open KBK Princip App
           </button>
 
           <p style={{ fontSize: '14px', color: '#999', marginTop: '20px' }}>
-            Or open the app manually from your phone
+            Or open the app manually from your home screen
           </p>
         </div>
       )}
