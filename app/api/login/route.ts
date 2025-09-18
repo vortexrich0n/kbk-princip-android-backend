@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
     // Admin može uvek da se uloguje bez obzira na verifikaciju
     const isAdmin = email === 'admin@kbkprincip.rs';
 
-    // Check if email is verified - samo za nove korisnike (registrovane nakon 18. decembra 2025)
-    const deploymentDate = new Date('2025-12-18T00:00:00Z');
+    // Check if email is verified - samo za nove korisnike (registrovane nakon 18. septembra 2025)
+    const deploymentDate = new Date('2025-09-18T12:00:00Z');
     const userCreatedAt = new Date(user.createdAt);
 
     // Ako je korisnik registrovan nakon deployment datuma i nije verifikovan email (osim admin)
