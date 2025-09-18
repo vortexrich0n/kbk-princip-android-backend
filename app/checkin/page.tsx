@@ -75,65 +75,84 @@ function CheckInContent() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.backgroundPattern}></div>
+      {/* Background orbs */}
+      <div className={styles.orbContainer}>
+        <div className={`${styles.orb} ${styles.orb1}`}></div>
+        <div className={`${styles.orb} ${styles.orb2}`}></div>
+        {(status === 'error' || status === 'no-membership') && (
+          <div className={`${styles.orb} ${styles.orb3}`}></div>
+        )}
+      </div>
 
       {status === 'loading' && (
         <div className={styles.loadingContainer}>
           <div className={styles.loader}></div>
-          <p>Proveravanje...</p>
+          <p className={styles.loadingText}>Proveravanje...</p>
         </div>
       )}
 
       {status === 'success' && (
         <div className={styles.successContainer}>
-          <div className={styles.checkmarkCircle}>
-            <svg className={styles.checkmark} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-              <circle className={styles.checkmarkCircleOutline} cx="26" cy="26" r="25" fill="none"/>
-              <path className={styles.checkmarkCheck} fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-            </svg>
-          </div>
-          <h1 className={styles.successTitle}>{message}</h1>
-          <p className={styles.successSubtitle}>Uspešno ste se prijavili</p>
-          <div className={styles.statsContainer}>
-            <div className={styles.statCard}>
-              <span className={styles.statNumber}>{monthlyCount}</span>
-              <span className={styles.statLabel}>treninga ovog meseca</span>
+          <div className={styles.successIcon}>
+            <div className={styles.successCircle}>
+              <div className={styles.checkmark}></div>
             </div>
           </div>
-          <div className={styles.motivationalText}>
-            Samo tako nastavi! 💪
+          <h1 className={styles.title}>{message}</h1>
+          <p className={styles.subtitle}>Uspešno ste se prijavili</p>
+          <div className={styles.statsCard}>
+            <span className={styles.statNumber}>{monthlyCount}</span>
+            <span className={styles.statLabel}>treninga ovog meseca</span>
           </div>
+          <button
+            className={styles.actionButton}
+            onClick={() => window.location.href = 'kbkprincip://home'}
+          >
+            Vrati se u aplikaciju
+          </button>
         </div>
       )}
 
       {status === 'no-membership' && (
-        <div className={styles.errorContainer}>
-          <div className={styles.errorCircle}>
-            <svg className={styles.xmark} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-              <circle className={styles.xmarkCircleOutline} cx="26" cy="26" r="25" fill="none"/>
-              <path className={styles.xmarkX} fill="none" d="M16 16 L36 36 M36 16 L16 36"/>
-            </svg>
+        <div className={styles.noMembershipContainer}>
+          <div className={styles.errorIcon}>
+            <div className={styles.errorCircle}>
+              <div className={styles.xmark}></div>
+            </div>
           </div>
-          <h1 className={styles.errorTitle}>Članarina nije aktivna</h1>
-          <p className={styles.errorSubtitle}>{userName ? `${userName}, ` : ''}molimo Vas obnovite članarinu</p>
-          <div className={styles.actionContainer}>
-            <button className={styles.primaryButton} onClick={() => window.location.href = '/membership'}>
-              Obnovi članarinu
-            </button>
+          <h1 className={styles.title}>Članarina nije aktivna</h1>
+          <p className={styles.subtitle}>{userName ? `${userName}, ` : ''}molimo Vas obnovite članarinu</p>
+          <div className={styles.warningStatsCard}>
+            <div className={styles.warningIcon}>⚠️</div>
+            <div className={styles.warningText}>
+              Vaša članarina je istekla.<br />
+              Obnovite je da nastavite treniranje.
+            </div>
           </div>
+          <button
+            className={styles.actionButton}
+            onClick={() => window.location.href = 'kbkprincip://membership'}
+          >
+            Obnovi članarinu
+          </button>
         </div>
       )}
 
       {status === 'error' && (
         <div className={styles.errorContainer}>
-          <div className={styles.errorCircle}>
-            <svg className={styles.xmark} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-              <circle className={styles.xmarkCircleOutline} cx="26" cy="26" r="25" fill="none"/>
-              <path className={styles.xmarkX} fill="none" d="M16 16 L36 36 M36 16 L16 36"/>
-            </svg>
+          <div className={styles.errorIcon}>
+            <div className={styles.errorCircle}>
+              <div className={styles.xmark}></div>
+            </div>
           </div>
-          <h1 className={styles.errorTitle}>Greška</h1>
-          <p className={styles.errorSubtitle}>{message}</p>
+          <h1 className={styles.title}>Greška</h1>
+          <p className={styles.subtitle}>{message}</p>
+          <button
+            className={styles.actionButton}
+            onClick={() => window.location.href = 'kbkprincip://home'}
+          >
+            Vrati se u aplikaciju
+          </button>
         </div>
       )}
     </div>
@@ -144,10 +163,9 @@ export default function CheckInPage() {
   return (
     <Suspense fallback={
       <div className={styles.container}>
-        <div className={styles.backgroundPattern}></div>
         <div className={styles.loadingContainer}>
           <div className={styles.loader}></div>
-          <p>Učitavanje...</p>
+          <p className={styles.loadingText}>Učitavanje...</p>
         </div>
       </div>
     }>
