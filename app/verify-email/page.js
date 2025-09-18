@@ -38,6 +38,16 @@ function VerifyEmailContent() {
     verifyEmail();
   }, [searchParams]);
 
+  const openApp = () => {
+    // Try to open the app with custom scheme
+    window.location.href = 'kbkprincip://login';
+
+    // Show message after attempting to open app
+    setTimeout(() => {
+      alert('If the app didn\'t open, please open it manually from your home screen.');
+    }, 1000);
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -63,27 +73,38 @@ function VerifyEmailContent() {
           padding: '40px',
           borderRadius: '10px',
           boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          maxWidth: '400px'
+          maxWidth: '400px',
+          width: '100%'
         }}>
-          <div style={{ fontSize: '3rem', marginBottom: '20px' }}>✅</div>
-          <h1 style={{ color: '#10B981', marginBottom: '20px' }}>Email Verified!</h1>
-          <p style={{ marginBottom: '30px', color: '#666' }}>
-            Your email has been successfully verified.
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
+          <h1 style={{ color: '#10B981', marginBottom: '10px', fontSize: '2rem' }}>Success!</h1>
+          <h2 style={{ marginBottom: '20px', color: '#333' }}>Your email has been verified</h2>
+          <p style={{ marginBottom: '30px', color: '#666', lineHeight: '1.6' }}>
+            Your account is now active. You can log in to the KBK Princip app with your email and password.
           </p>
-          <div style={{
-            backgroundColor: '#f0f9ff',
-            border: '1px solid #3B82F6',
-            borderRadius: '8px',
-            padding: '20px',
-            marginTop: '20px'
-          }}>
-            <h3 style={{ color: '#1E40AF', marginBottom: '10px' }}>Next Steps:</h3>
-            <ol style={{ textAlign: 'left', color: '#64748B' }}>
-              <li>Open the KBK Princip app</li>
-              <li>Log in with your email and password</li>
-              <li>Enjoy full access to all features!</li>
-            </ol>
-          </div>
+
+          <button
+            onClick={openApp}
+            style={{
+              backgroundColor: '#DC2626',
+              color: 'white',
+              border: 'none',
+              padding: '15px 30px',
+              fontSize: '18px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              width: '100%',
+              marginBottom: '15px',
+              boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
+            }}
+          >
+            Open KBK Princip App
+          </button>
+
+          <p style={{ fontSize: '14px', color: '#999', marginTop: '20px' }}>
+            Or open the app manually from your phone
+          </p>
         </div>
       )}
 
@@ -94,12 +115,13 @@ function VerifyEmailContent() {
           padding: '40px',
           borderRadius: '10px',
           boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          maxWidth: '400px'
+          maxWidth: '400px',
+          width: '100%'
         }}>
           <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
           <h1 style={{ color: '#EF4444', marginBottom: '20px' }}>Verification Failed</h1>
-          <p style={{ color: '#666' }}>{error}</p>
-          <p style={{ marginTop: '20px', color: '#666' }}>
+          <p style={{ color: '#666', marginBottom: '20px' }}>{error}</p>
+          <p style={{ color: '#666' }}>
             Please request a new verification email from the app.
           </p>
         </div>

@@ -60,6 +60,16 @@ function ResetPasswordContent() {
     }
   };
 
+  const openApp = () => {
+    // Try to open the app with custom scheme
+    window.location.href = 'kbkprincip://login';
+
+    // Show message after attempting to open app
+    setTimeout(() => {
+      alert('If the app didn\'t open, please open it manually from your home screen.');
+    }, 1000);
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -80,11 +90,11 @@ function ResetPasswordContent() {
           width: '100%',
           maxWidth: '400px'
         }}>
-          <h1 style={{ marginBottom: '30px', textAlign: 'center' }}>Reset Your Password</h1>
+          <h1 style={{ marginBottom: '30px', textAlign: 'center', color: '#333' }}>Reset Your Password</h1>
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', color: '#555' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#555', fontWeight: '500' }}>
                 New Password
               </label>
               <input
@@ -93,19 +103,20 @@ function ResetPasswordContent() {
                 onChange={(e) => setPassword(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '10px',
+                  padding: '12px',
                   border: '1px solid #ddd',
-                  borderRadius: '5px',
+                  borderRadius: '6px',
                   fontSize: '16px',
                   boxSizing: 'border-box'
                 }}
                 placeholder="Enter new password"
                 required
+                minLength={6}
               />
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', color: '#555' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#555', fontWeight: '500' }}>
                 Confirm Password
               </label>
               <input
@@ -114,9 +125,9 @@ function ResetPasswordContent() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '10px',
+                  padding: '12px',
                   border: '1px solid #ddd',
-                  borderRadius: '5px',
+                  borderRadius: '6px',
                   fontSize: '16px',
                   boxSizing: 'border-box'
                 }}
@@ -132,7 +143,8 @@ function ResetPasswordContent() {
                 border: '1px solid #FECACA',
                 borderRadius: '5px',
                 color: '#991B1B',
-                marginBottom: '20px'
+                marginBottom: '20px',
+                fontSize: '14px'
               }}>
                 {error}
               </div>
@@ -142,14 +154,15 @@ function ResetPasswordContent() {
               type="submit"
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '14px',
                 backgroundColor: '#DC2626',
                 color: 'white',
                 border: 'none',
-                borderRadius: '5px',
+                borderRadius: '6px',
                 fontSize: '16px',
                 fontWeight: 'bold',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
               }}
             >
               Reset Password
@@ -172,26 +185,51 @@ function ResetPasswordContent() {
           padding: '40px',
           borderRadius: '10px',
           boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          maxWidth: '400px'
+          maxWidth: '400px',
+          width: '100%'
         }}>
-          <div style={{ fontSize: '3rem', marginBottom: '20px' }}>✅</div>
-          <h1 style={{ color: '#10B981', marginBottom: '20px' }}>Password Reset Successfully!</h1>
-          <p style={{ marginBottom: '30px', color: '#666' }}>
-            Your password has been updated.
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
+          <h1 style={{ color: '#10B981', marginBottom: '10px', fontSize: '2rem' }}>Success!</h1>
+          <h2 style={{ marginBottom: '20px', color: '#333' }}>Your password has been reset</h2>
+          <p style={{ marginBottom: '30px', color: '#666', lineHeight: '1.6' }}>
+            You can now log in to the KBK Princip app with your new password.
           </p>
+
+          <button
+            onClick={openApp}
+            style={{
+              backgroundColor: '#DC2626',
+              color: 'white',
+              border: 'none',
+              padding: '15px 30px',
+              fontSize: '18px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              width: '100%',
+              marginBottom: '15px',
+              boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
+            }}
+          >
+            Open KBK Princip App
+          </button>
+
+          <p style={{ fontSize: '14px', color: '#999', marginTop: '20px' }}>
+            Or open the app manually from your phone
+          </p>
+
           <div style={{
-            backgroundColor: '#f0f9ff',
-            border: '1px solid #3B82F6',
+            backgroundColor: '#FEF3C7',
+            border: '1px solid #F59E0B',
             borderRadius: '8px',
-            padding: '20px',
-            marginTop: '20px'
+            padding: '15px',
+            marginTop: '20px',
+            textAlign: 'left'
           }}>
-            <h3 style={{ color: '#1E40AF', marginBottom: '10px' }}>Next Steps:</h3>
-            <ol style={{ textAlign: 'left', color: '#64748B' }}>
-              <li>Open the KBK Princip app</li>
-              <li>Log in with your email and new password</li>
-              <li>Keep your password safe!</li>
-            </ol>
+            <strong style={{ color: '#92400E' }}>Remember:</strong>
+            <p style={{ margin: '5px 0', color: '#78350F', fontSize: '14px' }}>
+              Keep your new password safe and secure!
+            </p>
           </div>
         </div>
       )}
@@ -203,12 +241,13 @@ function ResetPasswordContent() {
           padding: '40px',
           borderRadius: '10px',
           boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          maxWidth: '400px'
+          maxWidth: '400px',
+          width: '100%'
         }}>
           <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
           <h1 style={{ color: '#EF4444', marginBottom: '20px' }}>Invalid Reset Link</h1>
-          <p style={{ color: '#666' }}>{error || 'This password reset link is invalid or has expired.'}</p>
-          <p style={{ marginTop: '20px', color: '#666' }}>
+          <p style={{ color: '#666', marginBottom: '20px' }}>{error || 'This password reset link is invalid or has expired.'}</p>
+          <p style={{ color: '#666' }}>
             Please request a new password reset link from the app.
           </p>
         </div>
