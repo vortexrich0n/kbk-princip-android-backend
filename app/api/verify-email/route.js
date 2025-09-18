@@ -1,33 +1,68 @@
 import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import { verifyUser } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
 
+    console.log('Verify email request for token:', token?.substring(0, 10) + '...');
+
     if (!token) {
       return NextResponse.json({
         ok: false,
-        error: 'Verification token is required'
+        error: 'Token za verifikaciju je obavezan'
       }, { status: 400 });
     }
 
-    // Verify the user
-    const user = await verifyUser(token);
+    // Find user with this verification token
+    const user = await prisma.user.findFirst({
+      where: {
+        verificationToken: token
+      }
+    });
 
-    // JWT token generation removed - not needed for web-based verification
+    if (!user) {
+      console.log('User not found with verification token');
+      return NextResponse.json({
+        ok: false,
+        error: 'Nevažeći ili istekao token za verifikaciju. Molimo zatražite novi.'
+      }, { status: 400 });
+    }
 
-    // Mark user as verified and return success
+    // Check if already verified
+    if (user.emailVerified) {
+      return NextResponse.json({
+        ok: true,
+        message: 'Email je već verifikovan.',
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          emailVerified: true
+        }
+      });
+    }
+
+    // Update user to be verified
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        verificationToken: null,
+        verificationExpires: null
+      }
+    });
+
+    console.log('Email verified successfully for user:', updatedUser.email);
+
     return NextResponse.json({
       ok: true,
-      message: 'Email verified successfully! You can now log in to the app.',
+      message: 'Email je uspešno verifikovan! Sada možete da se ulogujete u aplikaciju.',
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
         emailVerified: true
       }
     });
@@ -35,63 +70,9 @@ export async function GET(request) {
   } catch (error) {
     console.error('Email verification error:', error);
 
-    if (error.message === 'Invalid or expired verification token') {
-      return NextResponse.json({
-        ok: false,
-        error: 'Invalid or expired verification token. Please request a new one.'
-      }, { status: 400 });
-    }
-
     return NextResponse.json({
       ok: false,
-      error: 'Email verification failed. Please try again.'
-    }, { status: 500 });
-  }
-}
-
-export async function POST(request) {
-  try {
-    const body = await request.json();
-    const token = body.token;
-
-    if (!token) {
-      return NextResponse.json({
-        ok: false,
-        error: 'Verification token is required'
-      }, { status: 400 });
-    }
-
-    // Verify the user
-    const user = await verifyUser(token);
-
-    // JWT token generation removed - not needed for web-based verification
-
-    return NextResponse.json({
-      ok: true,
-      message: 'Email verified successfully',
-      token: jwtToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        emailVerified: true
-      }
-    });
-
-  } catch (error) {
-    console.error('Email verification error:', error);
-
-    if (error.message === 'Invalid or expired verification token') {
-      return NextResponse.json({
-        ok: false,
-        error: 'Invalid or expired verification token. Please request a new one.'
-      }, { status: 400 });
-    }
-
-    return NextResponse.json({
-      ok: false,
-      error: 'Email verification failed. Please try again.'
+      error: 'Greška pri verifikaciji email-a. Pokušajte ponovo.'
     }, { status: 500 });
   }
 }

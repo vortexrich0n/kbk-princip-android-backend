@@ -62,11 +62,12 @@ export default function ResetPasswordPage() {
       if (response.ok) {
         setStatus('success');
       } else {
-        setStatus('error');
+        setStatus('input'); // Ostajemo na formi da korisnik može ponovo da pokuša
         setError(data.error || 'Greška pri resetovanju lozinke');
       }
     } catch (err) {
-      setStatus('error');
+      console.error('Reset password error:', err);
+      setStatus('input'); // Vratimo na input umesto error
       setError('Greška mreže. Pokušajte ponovo.');
     }
   };
