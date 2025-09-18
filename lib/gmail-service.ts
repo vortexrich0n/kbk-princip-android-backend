@@ -35,7 +35,7 @@ export async function sendVerificationEmail(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     const transporter = createTransporter();
-    const verificationUrl = `${process.env.NEXTAUTH_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.NEXTAUTH_URL || 'https://kbk-princip-android-backend.vercel.app'}/verify-email?token=${token}`;
 
     const htmlContent = `
       <!DOCTYPE html>

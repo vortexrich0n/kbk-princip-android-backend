@@ -31,12 +31,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if email is verified - samo za nove korisnike (registrovane nakon 18. decembra 2024)
-    const deploymentDate = new Date('2024-12-18T00:00:00Z');
+    // Admin može uvek da se uloguje bez obzira na verifikaciju
+    const isAdmin = email === 'admin@kbkprincip.rs';
+
+    // Check if email is verified - samo za nove korisnike (registrovane nakon 18. decembra 2025)
+    const deploymentDate = new Date('2025-12-18T00:00:00Z');
     const userCreatedAt = new Date(user.createdAt);
 
-    // Ako je korisnik registrovan nakon deployment datuma i nije verifikovan email
-    if (userCreatedAt > deploymentDate && !user.emailVerified) {
+    // Ako je korisnik registrovan nakon deployment datuma i nije verifikovan email (osim admin)
+    if (!isAdmin && userCreatedAt > deploymentDate && !user.emailVerified) {
       return NextResponse.json(
         { error: 'Molimo verifikujte vaš email pre prijave. Proverite vašu email poštu.' },
         { status: 403 }

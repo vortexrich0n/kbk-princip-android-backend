@@ -12,7 +12,7 @@ apiInstance.setApiKey(
 );
 
 export async function sendVerificationEmail(email: string, token: string) {
-  const verificationUrl = `${process.env.NEXTAUTH_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/verify-email?token=${token}`;
+  const verificationUrl = `${process.env.NEXTAUTH_URL || 'https://kbk-princip-android-backend.vercel.app'}/verify-email?token=${token}`;
 
   const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
 

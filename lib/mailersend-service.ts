@@ -14,7 +14,7 @@ export async function sendVerificationEmail(
   verificationToken: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    const verificationUrl = `${process.env.NEXTAUTH_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/verify-email?token=${verificationToken}`;
+    const verificationUrl = `${process.env.NEXTAUTH_URL || 'https://kbk-princip-android-backend.vercel.app'}/verify-email?token=${verificationToken}`;
 
     // Configure sender - MUST match your MailerSend verified domain!
     const sentFrom = new Sender(
