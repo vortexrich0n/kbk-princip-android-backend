@@ -1,20 +1,19 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-function VerifyEmailContent() {
-  const searchParams = useSearchParams();
-  const [status, setStatus] = useState('loading');
+export default function VerifyEmailPage() {
+  const [status, setStatus] = useState('verifying');
   const [error, setError] = useState('');
-  const [isClient, setIsClient] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
+    setMounted(true);
 
     const verifyEmail = async () => {
-      setStatus('verifying');
-      const token = searchParams.get('token');
+      // Get token from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
 
       if (!token) {
         setStatus('error');
@@ -39,25 +38,16 @@ function VerifyEmailContent() {
     };
 
     verifyEmail();
-  }, [searchParams]);
+  }, []);
 
   const openApp = () => {
     // Simply try to open the app - NO automatic redirect
     window.location.href = 'kbkprincip://login';
   };
 
-  if (!isClient) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        <h1>Loading...</h1>
-      </div>
-    );
+  // Don't render until client-side
+  if (!mounted) {
+    return null;
   }
 
   return (
@@ -90,7 +80,6 @@ function VerifyEmailContent() {
         }}>
           <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
           <h1 style={{ color: '#10B981', marginBottom: '10px', fontSize: '2rem' }}>Success!</h1>
-          {/* Force redeploy - no automatic redirect */}
           <h2 style={{ marginBottom: '20px', color: '#333' }}>Your email has been verified</h2>
           <p style={{ marginBottom: '30px', color: '#666', lineHeight: '1.6' }}>
             Your account is now active. You can log in to the KBK Princip app with your email and password.
@@ -143,23 +132,5 @@ function VerifyEmailContent() {
         </div>
       )}
     </div>
-  );
-}
-
-export default function VerifyEmailPage() {
-  return (
-    <Suspense fallback={
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        <h1>Loading...</h1>
-      </div>
-    }>
-      <VerifyEmailContent />
-    </Suspense>
   );
 }

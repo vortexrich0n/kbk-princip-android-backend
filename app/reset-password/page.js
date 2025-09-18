@@ -1,21 +1,27 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
-function ResetPasswordContent() {
-  const searchParams = useSearchParams();
-  const [token, setToken] = useState(null);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-    setToken(searchParams.get('token'));
-  }, [searchParams]);
+export default function ResetPasswordPage() {
+  const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState('input'); // input, loading, success, error
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // Get token from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    if (urlToken) {
+      setToken(urlToken);
+    } else {
+      setStatus('error');
+      setError('Reset token is missing');
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,18 +76,9 @@ function ResetPasswordContent() {
     window.location.href = 'kbkprincip://login';
   };
 
-  if (!isClient) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        <h1>Loading...</h1>
-      </div>
-    );
+  // Don't render until client-side
+  if (!mounted) {
+    return null;
   }
 
   return (
@@ -95,7 +92,7 @@ function ResetPasswordContent() {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       backgroundColor: '#f5f5f5'
     }}>
-      {status === 'input' && (
+      {status === 'input' && token && (
         <div style={{
           backgroundColor: 'white',
           padding: '40px',
@@ -105,7 +102,6 @@ function ResetPasswordContent() {
           maxWidth: '400px'
         }}>
           <h1 style={{ marginBottom: '30px', textAlign: 'center', color: '#333' }}>Reset Your Password</h1>
-          {/* Force redeploy - remove automatic redirect */}
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
@@ -274,23 +270,5 @@ function ResetPasswordContent() {
         </div>
       )}
     </div>
-  );
-}
-
-export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        <h1>Loading...</h1>
-      </div>
-    }>
-      <ResetPasswordContent />
-    </Suspense>
   );
 }
