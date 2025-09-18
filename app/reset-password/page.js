@@ -19,7 +19,7 @@ export default function ResetPasswordPage() {
       setToken(urlToken);
     } else {
       setStatus('error');
-      setError('Reset token is missing');
+      setError('Token za resetovanje lozinke nedostaje');
     }
   }, []);
 
@@ -27,18 +27,18 @@ export default function ResetPasswordPage() {
     e.preventDefault();
 
     if (!token) {
-      setError('Reset token is missing');
+      setError('Token za resetovanje nedostaje');
       setStatus('error');
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError('Lozinka mora imati najmanje 6 karaktera');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('Lozinke se ne poklapaju');
       return;
     }
 
@@ -63,16 +63,15 @@ export default function ResetPasswordPage() {
         setStatus('success');
       } else {
         setStatus('error');
-        setError(data.error || 'Failed to reset password');
+        setError(data.error || 'Greška pri resetovanju lozinke');
       }
     } catch (err) {
       setStatus('error');
-      setError('Network error. Please try again.');
+      setError('Greška mreže. Pokušajte ponovo.');
     }
   };
 
   const openApp = () => {
-    // Simply try to open the app - NO automatic redirect
     window.location.href = 'kbkprincip://login';
   };
 
@@ -89,24 +88,45 @@ export default function ResetPasswordPage() {
       justifyContent: 'center',
       minHeight: '100vh',
       padding: '20px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      backgroundColor: '#f5f5f5'
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     }}>
       {status === 'input' && token && (
         <div style={{
           backgroundColor: 'white',
-          padding: '40px',
-          borderRadius: '10px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          padding: '50px',
+          borderRadius: '20px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
           width: '100%',
-          maxWidth: '400px'
+          maxWidth: '450px'
         }}>
-          <h1 style={{ marginBottom: '30px', textAlign: 'center', color: '#333' }}>Reset Your Password</h1>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>🔐</div>
+            <h1 style={{
+              fontSize: '28px',
+              fontWeight: 'bold',
+              color: '#2d3748',
+              marginBottom: '10px'
+            }}>
+              Resetuj Lozinku
+            </h1>
+            <p style={{ color: '#718096', fontSize: '16px' }}>
+              Unesite novu lozinku za vaš nalog
+            </p>
+          </div>
 
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#555', fontWeight: '500' }}>
-                New Password
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '10px',
+                color: '#4a5568',
+                fontWeight: '600',
+                fontSize: '14px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Nova Lozinka
               </label>
               <input
                 type="password"
@@ -114,21 +134,33 @@ export default function ResetPasswordPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
+                  padding: '14px 16px',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '10px',
                   fontSize: '16px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  transition: 'all 0.3s',
+                  outline: 'none'
                 }}
-                placeholder="Enter new password"
+                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                placeholder="Unesite novu lozinku"
                 required
                 minLength={6}
               />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#555', fontWeight: '500' }}>
-                Confirm Password
+            <div style={{ marginBottom: '30px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '10px',
+                color: '#4a5568',
+                fontWeight: '600',
+                fontSize: '14px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Potvrdite Lozinku
               </label>
               <input
                 type="password"
@@ -136,27 +168,34 @@ export default function ResetPasswordPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
+                  padding: '14px 16px',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '10px',
                   fontSize: '16px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  transition: 'all 0.3s',
+                  outline: 'none'
                 }}
-                placeholder="Confirm new password"
+                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                placeholder="Potvrdite novu lozinku"
                 required
               />
             </div>
 
             {error && (
               <div style={{
-                padding: '10px',
-                backgroundColor: '#FEE2E2',
-                border: '1px solid #FECACA',
-                borderRadius: '5px',
-                color: '#991B1B',
+                padding: '12px',
+                backgroundColor: '#fed7d7',
+                border: '1px solid #fc8181',
+                borderRadius: '8px',
+                color: '#742a2a',
                 marginBottom: '20px',
-                fontSize: '14px'
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center'
               }}>
+                <span style={{ marginRight: '8px' }}>⚠️</span>
                 {error}
               </div>
             )}
@@ -165,30 +204,45 @@ export default function ResetPasswordPage() {
               type="submit"
               style={{
                 width: '100%',
-                padding: '14px',
-                backgroundColor: '#DC2626',
+                padding: '16px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '10px',
                 fontSize: '16px',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)',
-                transition: 'background-color 0.2s'
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
               }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#B91C1C'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#DC2626'}
+              onMouseOver={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+              }}
             >
-              Reset Password
+              Resetuj Lozinku
             </button>
           </form>
         </div>
       )}
 
       {status === 'loading' && (
-        <div style={{ textAlign: 'center' }}>
-          <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳ Resetting password...</h1>
-          <p style={{ color: '#666' }}>Please wait...</p>
+        <div style={{
+          textAlign: 'center',
+          backgroundColor: 'white',
+          padding: '50px',
+          borderRadius: '20px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+        }}>
+          <div style={{ fontSize: '60px', marginBottom: '20px' }}>⏳</div>
+          <h1 style={{ fontSize: '24px', marginBottom: '10px', color: '#2d3748' }}>
+            Resetovanje u toku...
+          </h1>
+          <p style={{ color: '#718096' }}>Molimo sačekajte...</p>
         </div>
       )}
 
@@ -196,56 +250,98 @@ export default function ResetPasswordPage() {
         <div style={{
           textAlign: 'center',
           backgroundColor: 'white',
-          padding: '40px',
-          borderRadius: '10px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          maxWidth: '400px',
+          padding: '50px',
+          borderRadius: '20px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          maxWidth: '450px',
           width: '100%'
         }}>
-          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
-          <h1 style={{ color: '#10B981', marginBottom: '10px', fontSize: '2rem' }}>Success!</h1>
-          <h2 style={{ marginBottom: '20px', color: '#333' }}>Your password has been reset</h2>
-          <p style={{ marginBottom: '30px', color: '#666', lineHeight: '1.6' }}>
-            You can now log in to the KBK Princip app with your new password.
+          <div style={{
+            fontSize: '80px',
+            marginBottom: '30px',
+            animation: 'pulse 2s infinite'
+          }}>
+            ✅
+          </div>
+          <h1 style={{
+            color: '#48bb78',
+            marginBottom: '10px',
+            fontSize: '32px',
+            fontWeight: 'bold'
+          }}>
+            Uspešno!
+          </h1>
+          <h2 style={{
+            marginBottom: '20px',
+            color: '#2d3748',
+            fontSize: '20px'
+          }}>
+            Vaša lozinka je resetovana
+          </h2>
+          <p style={{
+            marginBottom: '40px',
+            color: '#718096',
+            lineHeight: '1.8',
+            fontSize: '16px'
+          }}>
+            Sada možete da se ulogujete u KBK Princip aplikaciju sa vašom novom lozinkom.
           </p>
 
           <button
             onClick={openApp}
             style={{
-              backgroundColor: '#DC2626',
+              background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
               color: 'white',
               border: 'none',
-              padding: '15px 30px',
+              padding: '18px 40px',
               fontSize: '18px',
-              borderRadius: '8px',
+              borderRadius: '10px',
               cursor: 'pointer',
               fontWeight: 'bold',
               width: '100%',
-              marginBottom: '15px',
-              boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)',
-              transition: 'background-color 0.2s'
+              marginBottom: '20px',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              boxShadow: '0 4px 15px rgba(72, 187, 120, 0.4)'
             }}
-            onMouseOver={(e) => e.target.style.backgroundColor = '#B91C1C'}
-            onMouseOut={(e) => e.target.style.backgroundColor = '#DC2626'}
+            onMouseOver={(e) => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 6px 20px rgba(72, 187, 120, 0.6)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 15px rgba(72, 187, 120, 0.4)';
+            }}
           >
-            Open KBK Princip App
+            📱 Otvori KBK Princip Aplikaciju
           </button>
 
-          <p style={{ fontSize: '14px', color: '#999', marginTop: '20px' }}>
-            Or open the app manually from your phone
+          <p style={{
+            fontSize: '14px',
+            color: '#a0aec0',
+            marginTop: '20px'
+          }}>
+            Ili otvorite aplikaciju ručno sa vašeg telefona
           </p>
 
           <div style={{
-            backgroundColor: '#FEF3C7',
-            border: '1px solid #F59E0B',
-            borderRadius: '8px',
-            padding: '15px',
-            marginTop: '20px',
+            backgroundColor: '#f7fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: '20px',
+            marginTop: '30px',
             textAlign: 'left'
           }}>
-            <strong style={{ color: '#92400E' }}>Remember:</strong>
-            <p style={{ margin: '5px 0', color: '#78350F', fontSize: '14px' }}>
-              Keep your new password safe and secure!
+            <strong style={{ color: '#2d3748', display: 'flex', alignItems: 'center' }}>
+              <span style={{ marginRight: '8px' }}>💡</span>
+              Savet za bezbednost:
+            </strong>
+            <p style={{
+              margin: '10px 0 0 0',
+              color: '#4a5568',
+              fontSize: '14px',
+              lineHeight: '1.6'
+            }}>
+              Čuvajte vašu novu lozinku na sigurnom mestu i ne delite je ni sa kim!
             </p>
           </div>
         </div>
@@ -255,20 +351,47 @@ export default function ResetPasswordPage() {
         <div style={{
           textAlign: 'center',
           backgroundColor: 'white',
-          padding: '40px',
-          borderRadius: '10px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          maxWidth: '400px',
+          padding: '50px',
+          borderRadius: '20px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          maxWidth: '450px',
           width: '100%'
         }}>
-          <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
-          <h1 style={{ color: '#EF4444', marginBottom: '20px' }}>Invalid Reset Link</h1>
-          <p style={{ color: '#666', marginBottom: '20px' }}>{error || 'This password reset link is invalid or has expired.'}</p>
-          <p style={{ color: '#666' }}>
-            Please request a new password reset link from the app.
+          <div style={{ fontSize: '60px', marginBottom: '20px' }}>❌</div>
+          <h1 style={{
+            color: '#e53e3e',
+            marginBottom: '20px',
+            fontSize: '28px'
+          }}>
+            Nevažeći Link
+          </h1>
+          <p style={{
+            color: '#718096',
+            marginBottom: '20px',
+            fontSize: '16px',
+            lineHeight: '1.6'
+          }}>
+            {error || 'Ovaj link za resetovanje lozinke je nevažeći ili je istekao.'}
+          </p>
+          <p style={{ color: '#718096' }}>
+            Molimo vas zatražite novi link za resetovanje lozinke iz aplikacije.
           </p>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes pulse {
+          0% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
+      `}</style>
     </div>
   );
 }
