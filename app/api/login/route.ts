@@ -34,9 +34,19 @@ export async function POST(request: NextRequest) {
     // Admin može uvek da se uloguje bez obzira na verifikaciju
     const isAdmin = email === 'admin@kbkprincip.rs';
 
-    // Check if email is verified - samo za nove korisnike (registrovane nakon 18. septembra 2025)
-    const deploymentDate = new Date('2025-09-18T12:00:00Z');
+    // Check if email is verified - samo za nove korisnike (registrovane nakon danas)
+    // Svi korisnici registrovani pre 18. septembra 2025 u 10:00 UTC mogu da se uloguju bez verifikacije
+    const deploymentDate = new Date('2025-09-18T10:00:00Z');
     const userCreatedAt = new Date(user.createdAt);
+
+    console.log('Login check:', {
+      email,
+      isAdmin,
+      userCreatedAt: userCreatedAt.toISOString(),
+      deploymentDate: deploymentDate.toISOString(),
+      isAfterDeployment: userCreatedAt > deploymentDate,
+      emailVerified: user.emailVerified
+    });
 
     // Ako je korisnik registrovan nakon deployment datuma i nije verifikovan email (osim admin)
     if (!isAdmin && userCreatedAt > deploymentDate && !user.emailVerified) {
