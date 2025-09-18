@@ -26,8 +26,16 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Pogrešna email adresa ili lozinka' },
         { status: 401 }
+      );
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        { error: 'Molimo verifikujte vaš email pre prijave. Proverite vašu email poštu.' },
+        { status: 403 }
       );
     }
 
@@ -35,7 +43,7 @@ export async function POST(request: NextRequest) {
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Pogrešna email adresa ili lozinka' },
         { status: 401 }
       );
     }

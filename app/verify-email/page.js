@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 export default function VerifyEmailPage() {
   const [status, setStatus] = useState('verifying');
   const [error, setError] = useState('');
+  const [userInfo, setUserInfo] = useState(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -25,13 +26,19 @@ export default function VerifyEmailPage() {
         const response = await fetch(`/api/verify-email?token=${token}`);
         const data = await response.json();
 
-        if (response.ok) {
+        console.log('Verify response:', data); // Debug log
+
+        if (response.ok || data.ok) {
           setStatus('success');
+          if (data.user) {
+            setUserInfo(data.user);
+          }
         } else {
           setStatus('error');
           setError(data.error || 'Verifikacija nije uspela');
         }
       } catch (err) {
+        console.error('Verification error:', err);
         setStatus('error');
         setError('Greška mreže. Pokušajte ponovo.');
       }
@@ -108,6 +115,26 @@ export default function VerifyEmailPage() {
           }}>
             Vaš email je verifikovan
           </h2>
+
+          {userInfo && (
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #86efac',
+              borderRadius: '10px',
+              padding: '15px',
+              marginBottom: '30px'
+            }}>
+              <p style={{ margin: '5px 0', color: '#166534', fontSize: '15px' }}>
+                <strong>Email:</strong> {userInfo.email}
+              </p>
+              {userInfo.name && (
+                <p style={{ margin: '5px 0', color: '#166534', fontSize: '15px' }}>
+                  <strong>Ime:</strong> {userInfo.name}
+                </p>
+              )}
+            </div>
+          )}
+
           <p style={{
             marginBottom: '40px',
             color: '#718096',
