@@ -175,7 +175,8 @@ export async function sendVerificationEmail(email: string, token: string) {
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
-  const resetUrl = `${process.env.APP_URL || 'https://kbk-princip-android-backend.vercel.app'}/api/reset-password?token=${token}`;
+  // Use the web page instead of API endpoint
+  const resetUrl = `${process.env.APP_URL || 'https://kbk-princip-android-backend.vercel.app'}/reset-password?token=${token}`;
 
   // TEMPORARY: Resend is in test mode and can only send to account owner
   const recipientEmail = 'zgffitudok@gmail.com';
