@@ -20,21 +20,11 @@ function VerifyEmailContent() {
       }
 
       try {
-        // Call the verify API
         const response = await fetch(`/api/verify-email?token=${token}`);
         const data = await response.json();
 
-        if (response.ok && data.token) {
+        if (response.ok) {
           setStatus('success');
-
-          // Try to open the app with deep link
-          const deepLink = `kbkprincip://verify-email?token=${data.token}&email=${encodeURIComponent(data.user.email)}`;
-          window.location.href = deepLink;
-
-          // Fallback message after 2 seconds
-          setTimeout(() => {
-            setStatus('app-redirect');
-          }, 2000);
         } else {
           setStatus('error');
           setError(data.error || 'Verification failed');
@@ -56,41 +46,61 @@ function VerifyEmailContent() {
       justifyContent: 'center',
       minHeight: '100vh',
       padding: '20px',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      backgroundColor: '#f5f5f5'
     }}>
       {status === 'verifying' && (
-        <div>
-          <h1>Verifying your email...</h1>
-          <p>Please wait while we verify your account.</p>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳ Verifying your email...</h1>
+          <p style={{ color: '#666' }}>Please wait while we verify your account.</p>
         </div>
       )}
 
       {status === 'success' && (
-        <div>
-          <h1>✅ Email Verified Successfully!</h1>
-          <p>Opening the app...</p>
-        </div>
-      )}
-
-      {status === 'app-redirect' && (
-        <div style={{ textAlign: 'center' }}>
-          <h1>✅ Email Verified Successfully!</h1>
-          <p>Your email has been verified.</p>
-          <p style={{ marginTop: '20px' }}>
-            <strong>Please open the KBK Princip app to continue.</strong>
+        <div style={{
+          textAlign: 'center',
+          backgroundColor: 'white',
+          padding: '40px',
+          borderRadius: '10px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          maxWidth: '400px'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '20px' }}>✅</div>
+          <h1 style={{ color: '#10B981', marginBottom: '20px' }}>Email Verified!</h1>
+          <p style={{ marginBottom: '30px', color: '#666' }}>
+            Your email has been successfully verified.
           </p>
-          <p style={{ marginTop: '10px', color: '#666' }}>
-            You have been automatically logged in.
-          </p>
+          <div style={{
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #3B82F6',
+            borderRadius: '8px',
+            padding: '20px',
+            marginTop: '20px'
+          }}>
+            <h3 style={{ color: '#1E40AF', marginBottom: '10px' }}>Next Steps:</h3>
+            <ol style={{ textAlign: 'left', color: '#64748B' }}>
+              <li>Open the KBK Princip app</li>
+              <li>Log in with your email and password</li>
+              <li>Enjoy full access to all features!</li>
+            </ol>
+          </div>
         </div>
       )}
 
       {status === 'error' && (
-        <div style={{ textAlign: 'center' }}>
-          <h1>❌ Verification Failed</h1>
-          <p>{error}</p>
-          <p style={{ marginTop: '20px' }}>
-            Please request a new verification email.
+        <div style={{
+          textAlign: 'center',
+          backgroundColor: 'white',
+          padding: '40px',
+          borderRadius: '10px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          maxWidth: '400px'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
+          <h1 style={{ color: '#EF4444', marginBottom: '20px' }}>Verification Failed</h1>
+          <p style={{ color: '#666' }}>{error}</p>
+          <p style={{ marginTop: '20px', color: '#666' }}>
+            Please request a new verification email from the app.
           </p>
         </div>
       )}
@@ -103,11 +113,9 @@ export default function VerifyEmailPage() {
     <Suspense fallback={
       <div style={{
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        padding: '20px',
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
         <h1>Loading...</h1>

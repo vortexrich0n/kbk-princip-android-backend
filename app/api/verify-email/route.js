@@ -29,11 +29,10 @@ export async function GET(request) {
       { expiresIn: '7d' }
     );
 
-    // Return JSON response instead of redirect
+    // Mark user as verified and return success
     return NextResponse.json({
       ok: true,
-      message: 'Email verified successfully',
-      token: jwtToken,
+      message: 'Email verified successfully! You can now log in to the app.',
       user: {
         id: user.id,
         email: user.email,
