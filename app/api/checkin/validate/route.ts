@@ -48,6 +48,45 @@ export async function GET(request: NextRequest) {
                             user.membership.expiresAt &&
                             user.membership.expiresAt > now;
 
+    // Check if user already checked in today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existingCheckin = await prisma.checkin.findFirst({
+      where: {
+        userId: user.id,
+        createdAt: {
+          gte: today,
+          lt: tomorrow
+        }
+      }
+    });
+
+    // If no checkin today and membership is active, create one
+    let checkedInToday = false;
+    if (!existingCheckin && membershipActive) {
+      await prisma.checkin.create({
+        data: {
+          userId: user.id,
+          via: 'QR_SCAN'
+        }
+      });
+      checkedInToday = true;
+    }
+
+    // Get total checkins for this month
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthlyCheckins = await prisma.checkin.count({
+      where: {
+        userId: user.id,
+        createdAt: {
+          gte: firstDayOfMonth
+        }
+      }
+    });
+
     // Generate temporary token for attendance recording
     const JWT_SECRET = process.env.JWT_SECRET;
     if (!JWT_SECRET) {
@@ -70,6 +109,9 @@ export async function GET(request: NextRequest) {
       membershipActive,
       membershipType: user.membership?.type || null,
       membershipExpiresAt: user.membership?.expiresAt || null,
+      monthlyCheckins,
+      checkedInToday,
+      alreadyCheckedIn: !!existingCheckin,
       token // Token for attendance recording
     });
 

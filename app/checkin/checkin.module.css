@@ -47,10 +47,18 @@
 
 /* Success Container */
 .successContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   animation: fadeInScale 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 2;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
 @keyframes fadeInScale {
@@ -142,17 +150,33 @@
 
 /* Error Container */
 .errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   animation: fadeInScale 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 2;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
 .noMembershipContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   animation: fadeInScale 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 2;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
 /* Error X Animation */
@@ -280,6 +304,8 @@
   padding: 28px 40px;
   display: inline-block;
   animation: slideUpStats 0.5s ease-out 0.7s backwards;
+  margin: 30px auto;
+  text-align: center;
 }
 
 @keyframes slideUpStats {

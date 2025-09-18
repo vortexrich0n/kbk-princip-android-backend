@@ -39,33 +39,19 @@ function CheckInContent() {
       if (!userData.membershipActive) {
         setStatus('no-membership');
         setMessage('Vaša članarina nije aktivna');
+        setUserName(userData.name);
         return;
       }
 
-      // Record attendance
-      const response = await fetch('/api/attendance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userData.token}` // Token from QR validation
-        },
-        body: JSON.stringify({ qrCode })
-      });
+      // Success - attendance was already recorded in validate endpoint
+      setStatus('success');
+      setMessage(`Dobrodošli, ${userData.name}!`);
+      setMonthlyCount(userData.monthlyCheckins || 0);
+      setUserName(userData.name);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setStatus('success');
-        setMessage(`Dobrodošli, ${userData.name}!`);
-        setMonthlyCount(data.attendance?.monthlyTotal || 0);
-      } else {
-        if (response.status === 403 && data.error?.includes('članarina')) {
-          setStatus('no-membership');
-          setMessage(data.error);
-        } else {
-          setStatus('error');
-          setMessage(data.error || 'Greška pri čekiranju');
-        }
+      // Show message if already checked in
+      if (userData.alreadyCheckedIn) {
+        setMessage(`${userData.name}, već ste evidentirani danas!`);
       }
     } catch (error) {
       setStatus('error');
