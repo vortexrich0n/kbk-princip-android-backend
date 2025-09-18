@@ -17,17 +17,7 @@ export async function GET(request) {
     // Verify the user
     const user = await verifyUser(token);
 
-    // Generate JWT token for auto-login
-    const jwtToken = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        name: user.name || user.email.split('@')[0],
-        role: user.role || 'USER'
-      },
-      process.env.JWT_SECRET || 'your-secret-key-here',
-      { expiresIn: '7d' }
-    );
+    // JWT token generation removed - not needed for web-based verification
 
     // Mark user as verified and return success
     return NextResponse.json({
@@ -74,17 +64,7 @@ export async function POST(request) {
     // Verify the user
     const user = await verifyUser(token);
 
-    // Generate JWT token for auto-login
-    const jwtToken = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        name: user.name || user.email.split('@')[0],
-        role: user.role || 'USER'
-      },
-      process.env.JWT_SECRET || 'your-secret-key-here',
-      { expiresIn: '7d' }
-    );
+    // JWT token generation removed - not needed for web-based verification
 
     return NextResponse.json({
       ok: true,
