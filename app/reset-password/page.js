@@ -86,6 +86,7 @@ function ResetPasswordContent() {
           maxWidth: '400px'
         }}>
           <h1 style={{ marginBottom: '30px', textAlign: 'center', color: '#333' }}>Reset Your Password</h1>
+          {/* Force redeploy - remove automatic redirect */}
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>

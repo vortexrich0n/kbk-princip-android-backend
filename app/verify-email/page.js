@@ -73,6 +73,7 @@ function VerifyEmailContent() {
         }}>
           <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
           <h1 style={{ color: '#10B981', marginBottom: '10px', fontSize: '2rem' }}>Success!</h1>
+          {/* Force redeploy - no automatic redirect */}
           <h2 style={{ marginBottom: '20px', color: '#333' }}>Your email has been verified</h2>
           <p style={{ marginBottom: '30px', color: '#666', lineHeight: '1.6' }}>
             Your account is now active. You can log in to the KBK Princip app with your email and password.
