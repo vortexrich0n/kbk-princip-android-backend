@@ -1,16 +1,19 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState('verifying');
+  const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+
     const verifyEmail = async () => {
+      setStatus('verifying');
       const token = searchParams.get('token');
 
       if (!token) {
@@ -42,6 +45,20 @@ function VerifyEmailContent() {
     // Simply try to open the app - NO automatic redirect
     window.location.href = 'kbkprincip://login';
   };
+
+  if (!isClient) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <h1>Loading...</h1>
+      </div>
+    );
+  }
 
   return (
     <div style={{

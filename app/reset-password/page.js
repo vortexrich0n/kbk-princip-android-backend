@@ -1,12 +1,17 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const [token, setToken] = useState(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setToken(searchParams.get('token'));
+  }, [searchParams]);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState('input'); // input, loading, success, error
@@ -64,6 +69,20 @@ function ResetPasswordContent() {
     // Simply try to open the app - NO automatic redirect
     window.location.href = 'kbkprincip://login';
   };
+
+  if (!isClient) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <h1>Loading...</h1>
+      </div>
+    );
+  }
 
   return (
     <div style={{
