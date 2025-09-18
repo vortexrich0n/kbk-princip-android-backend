@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all checkins for the user
-    const checkins = await prisma.attendance.findMany({
+    const attendances = await prisma.attendance.findMany({
       where: {
         userId: userId
       },
@@ -45,25 +45,17 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Get monthly count
-    const firstDayOfMonth = new Date();
-    firstDayOfMonth.setDate(1);
-    firstDayOfMonth.setHours(0, 0, 0, 0);
+    // Transform attendance records to match Checkin model expected by Android app
+    const checkins = attendances.map(attendance => ({
+      id: attendance.id,
+      userId: attendance.userId,
+      createdAt: attendance.checkInTime,
+      via: attendance.qrCode ? 'QR_SCAN' : 'MANUAL'
+    }));
 
-    const monthlyCount = await prisma.attendance.count({
-      where: {
-        userId: userId,
-        checkInTime: {
-          gte: firstDayOfMonth
-        }
-      }
-    });
-
-    return NextResponse.json({
-      checkins,
-      monthlyCount,
-      total: checkins.length
-    });
+    // Return just the array of checkins (not an object)
+    // Android app expects Response<List<Checkin>>
+    return NextResponse.json(checkins);
 
   } catch (error) {
     console.error('Get checkins error:', error);

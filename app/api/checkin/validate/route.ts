@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const membershipActive = user.membership &&
                             user.membership.active &&
-                            user.membership.expiresAt &&
-                            user.membership.expiresAt > now;
+                            (user.membership.expiresAt === null || // null means never expires
+                             user.membership.expiresAt > now);
 
     // Check for recent checkin with 4-hour cooldown
     const fourHoursAgo = new Date();
@@ -64,17 +64,21 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    console.log('Recent checkin found:', recentCheckin);
+    console.log('Membership active:', membershipActive);
+
     // Create new checkin if no recent one exists (4-hour cooldown) and membership is active
     let checkedInNow = false;
     let cooldownRemaining = null;
 
     if (!recentCheckin && membershipActive) {
-      await prisma.attendance.create({
+      const newAttendance = await prisma.attendance.create({
         data: {
           userId: user.id,
           qrCode: qrCode
         }
       });
+      console.log('Created new attendance:', newAttendance);
       checkedInNow = true;
     } else if (recentCheckin && membershipActive) {
       // Calculate remaining cooldown time
