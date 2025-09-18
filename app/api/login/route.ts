@@ -31,16 +31,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if email is verified (samo za nove korisnike registrovane nakon ove izmene)
-    // Zakomentarisano privremeno da bi postojeći korisnici mogli da se uloguju
-    /*
-    if (!user.emailVerified) {
+    // Check if email is verified - samo za nove korisnike (registrovane nakon 18. decembra 2024)
+    const deploymentDate = new Date('2024-12-18T00:00:00Z');
+    const userCreatedAt = new Date(user.createdAt);
+
+    // Ako je korisnik registrovan nakon deployment datuma i nije verifikovan email
+    if (userCreatedAt > deploymentDate && !user.emailVerified) {
       return NextResponse.json(
         { error: 'Molimo verifikujte vaš email pre prijave. Proverite vašu email poštu.' },
         { status: 403 }
       );
     }
-    */
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
