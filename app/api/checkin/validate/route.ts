@@ -48,32 +48,45 @@ export async function GET(request: NextRequest) {
                             user.membership.expiresAt &&
                             user.membership.expiresAt > now;
 
-    // Check if user already checked in today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Check for recent checkin with 4-hour cooldown
+    const fourHoursAgo = new Date();
+    fourHoursAgo.setHours(fourHoursAgo.getHours() - 4);
 
-    const existingCheckin = await prisma.checkin.findFirst({
+    const recentCheckin = await prisma.checkin.findFirst({
       where: {
         userId: user.id,
         createdAt: {
-          gte: today,
-          lt: tomorrow
+          gte: fourHoursAgo
         }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
 
-    // If no checkin today and membership is active, create one
-    let checkedInToday = false;
-    if (!existingCheckin && membershipActive) {
+    // Create new checkin if no recent one exists (4-hour cooldown) and membership is active
+    let checkedInNow = false;
+    let cooldownRemaining = null;
+
+    if (!recentCheckin && membershipActive) {
       await prisma.checkin.create({
         data: {
           userId: user.id,
           via: 'QR_SCAN'
         }
       });
-      checkedInToday = true;
+      checkedInNow = true;
+    } else if (recentCheckin && membershipActive) {
+      // Calculate remaining cooldown time
+      const timeSinceLastCheckin = now.getTime() - new Date(recentCheckin.createdAt).getTime();
+      const fourHoursInMs = 4 * 60 * 60 * 1000;
+      const remainingMs = fourHoursInMs - timeSinceLastCheckin;
+
+      if (remainingMs > 0) {
+        const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+        const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+        cooldownRemaining = `${hours}h ${minutes}min`;
+      }
     }
 
     // Get total checkins for this month
@@ -110,8 +123,9 @@ export async function GET(request: NextRequest) {
       membershipType: user.membership?.type || null,
       membershipExpiresAt: user.membership?.expiresAt || null,
       monthlyCheckins,
-      checkedInToday,
-      alreadyCheckedIn: !!existingCheckin,
+      checkedInNow,
+      hasRecentCheckin: !!recentCheckin,
+      cooldownRemaining,
       token // Token for attendance recording
     });
 

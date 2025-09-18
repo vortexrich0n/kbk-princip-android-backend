@@ -43,15 +43,26 @@ function CheckInContent() {
         return;
       }
 
-      // Success - attendance was already recorded in validate endpoint
-      setStatus('success');
-      setMessage(`Dobrodošli, ${userData.name}!`);
+      // Handle check-in response
       setMonthlyCount(userData.monthlyCheckins || 0);
       setUserName(userData.name);
 
-      // Show message if already checked in
-      if (userData.alreadyCheckedIn) {
-        setMessage(`${userData.name}, već ste evidentirani danas!`);
+      if (userData.checkedInNow) {
+        // Successfully checked in just now
+        setStatus('success');
+        setMessage(`Dobrodošli, ${userData.name}!`);
+      } else if (userData.hasRecentCheckin && userData.cooldownRemaining) {
+        // Has recent check-in, still in cooldown
+        setStatus('error');
+        setMessage(`${userData.name}, možete ponovo da se prijavite za ${userData.cooldownRemaining}`);
+      } else if (userData.hasRecentCheckin) {
+        // Has recent check-in but cooldown info not available
+        setStatus('error');
+        setMessage(`${userData.name}, već ste se prijavili. Pokušajte ponovo kasnije.`);
+      } else {
+        // Success - no specific check-in created but showing stats
+        setStatus('success');
+        setMessage(`Dobrodošli, ${userData.name}!`);
       }
     } catch (error) {
       setStatus('error');
