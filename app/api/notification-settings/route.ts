@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify JWT token
-    let decoded: any;
+    let decoded: { userId: string; email: string };
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+    } catch {
       return NextResponse.json(
         { error: 'Nevažeći token' },
         { status: 401 }
@@ -101,10 +101,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify JWT token
-    let decoded: any;
+    let decoded: { userId: string; email: string };
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+    } catch {
       return NextResponse.json(
         { error: 'Nevažeći token' },
         { status: 401 }

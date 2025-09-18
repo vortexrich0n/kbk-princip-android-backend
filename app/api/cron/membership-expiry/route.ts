@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendPasswordResetEmail } from '@/lib/resend-service';
+import nodemailer from 'nodemailer';
 
 // Ova funkcija se poziva svaki dan preko cron job-a
 export async function GET(request: NextRequest) {
@@ -104,7 +104,6 @@ export async function GET(request: NextRequest) {
         `;
 
         // Direktno pošalji email
-        const nodemailer = require('nodemailer');
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: {

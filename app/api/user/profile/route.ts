@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
       userId = decoded.userId;
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 401 }
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(userResponse);
 
-  } catch (error) {
+  } catch {
     console.error('Get profile error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -99,7 +99,7 @@ export async function PATCH(request: NextRequest) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
       userId = decoded.userId;
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 401 }
@@ -130,7 +130,7 @@ export async function PATCH(request: NextRequest) {
       user: updatedUser,
     });
 
-  } catch (error) {
+  } catch {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input', details: error.issues },
@@ -170,7 +170,7 @@ export async function DELETE(request: NextRequest) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
       userId = decoded.userId;
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 401 }
@@ -189,7 +189,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Account deleted successfully',
     });
 
-  } catch (error) {
+  } catch {
     console.error('Delete account error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

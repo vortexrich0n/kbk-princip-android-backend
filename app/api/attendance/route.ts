@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify JWT token
-    let decoded: any;
+    let decoded: { userId: string; email: string };
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+    } catch {
       return NextResponse.json(
         { error: 'Nevažeći token' },
         { status: 401 }
@@ -139,10 +139,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify JWT token
-    let decoded: any;
+    let decoded: { userId: string; email: string };
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+    } catch {
       return NextResponse.json(
         { error: 'Nevažeći token' },
         { status: 401 }
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month'); // Format: YYYY-MM
 
     // Build filter
-    const where: any = { userId: decoded.userId };
+    const where: { userId: string; checkInTime?: { gte: Date; lte: Date } } = { userId: decoded.userId };
 
     if (month) {
       const [year, monthNum] = month.split('-').map(Number);
