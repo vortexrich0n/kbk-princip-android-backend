@@ -14,6 +14,7 @@
     "@prisma/client": "^6.16.1",
     "@sendinblue/client": "^3.3.1",
     "@types/nodemailer": "^7.0.1",
+    "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.16",
@@ -23,6 +24,7 @@
     "next": "15.5.3",
     "nodemailer": "^6.10.1",
     "pg": "^8.16.3",
+    "postcss": "^8.5.6",
     "prisma": "^6.16.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -40,7 +42,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.1.13",
     "typescript": "^5"
   }
 }
