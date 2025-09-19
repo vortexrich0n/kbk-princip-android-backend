@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
+      isAdmin: user.role === 'ADMIN',
       emailVerified: user.emailVerified,
       membership: user.membership
     };

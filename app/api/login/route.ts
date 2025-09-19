@@ -31,12 +31,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // SAMO admin@kbkprincip.rs može da se uloguje bez verifikacije
-    // SVI OSTALI moraju da verifikuju email
-    const isAdmin = email === 'admin@kbkprincip.rs';
-
-    // Proveri email verifikaciju za sve korisnike osim admin-a
-    if (!isAdmin && !user.emailVerified) {
+    // SVI korisnici moraju da verifikuju email, bez izuzetaka
+    if (!user.emailVerified) {
       return NextResponse.json(
         { error: 'Molimo verifikujte vaš email pre prijave. Proverite vašu email poštu.' },
         { status: 403 }
@@ -77,6 +73,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
+      isAdmin: user.role === 'ADMIN',
       emailVerified: user.emailVerified,
       membership: user.membership
     };

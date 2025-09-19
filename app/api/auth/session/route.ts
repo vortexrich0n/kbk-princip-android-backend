@@ -36,11 +36,15 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      user,
+      user: {
+        ...user,
+        isAdmin: user.role === 'ADMIN',
+      },
       tokenData: {
         userId: payload.userId,
         email: payload.email,
         role: payload.role,
+        isAdmin: payload.role === 'ADMIN',
         exp: payload.exp,
       },
     });
