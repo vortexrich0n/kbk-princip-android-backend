@@ -1,26 +1,126 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0% 98%;
+    --foreground: 0 0% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 0 0% 15%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 355 85% 50%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 355 85% 50%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 92%;
+    --input: 0 0% 94%;
+    --ring: 0 0% 15%;
+    --radius: 0.75rem;
+    --champion-red: 355 85% 50%;
+    --power-black: 0 0% 15%;
+    --steel-gray: 0 0% 35%;
+    --victory-gold: 48 95% 53%;
+  }
+
+  .dark {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 355 85% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 355 85% 45%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 18%;
+    --ring: 355 85% 50%;
+    --champion-red: 355 85% 50%;
+    --power-black: 0 0% 10%;
+    --steel-gray: 0 0% 40%;
+    --victory-gold: 48 95% 53%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Container */
+  .container {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Glass effects */
+  .glass-card {
+    @apply backdrop-blur-2xl bg-white/70 dark:bg-black/40 border border-white/30 dark:border-white/10 shadow-2xl rounded-xl;
+    background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0.08) 100%) !important;
+  }
+
+  .dark .glass-card {
+    background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.03) 100%) !important;
+  }
+
+  /* Champion card styles */
+  .champion-card {
+    @apply relative overflow-hidden rounded-xl border border-white/10 transition-all duration-300;
+    background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.9));
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98];
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:bg-primary/90;
+    background: linear-gradient(135deg, hsl(var(--power-black)), hsl(var(--power-black) / 0.9));
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary bg-transparent hover:bg-primary hover:text-primary-foreground hover:border-transparent;
+  }
+
+  /* Text gradients */
+  .text-gradient-hero {
+    @apply bg-gradient-to-br from-primary via-accent to-primary dark:from-white dark:via-accent dark:to-white bg-clip-text text-transparent font-bold;
+    background-size: 200% auto;
+    animation: textShine 4s ease-in-out infinite;
+  }
+
+  @keyframes textShine {
+    to { background-position: 200% center; }
+  }
+
+  /* Hover effects */
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl cursor-pointer;
+  }
 }
