@@ -151,6 +151,7 @@ export default function AdminPanel() {
         // Calculate revenue data for charts
         const revenueByMonth = calculateMonthlyRevenue(formattedMembers);
         setRevenueData(revenueByMonth);
+
       } else {
         console.log('Users fetch failed, using mock data');
         setMockData();
@@ -179,13 +180,6 @@ export default function AdminPanel() {
             };
           });
         setTodayCheckIns(todayAttendance);
-
-        // Calculate revenue data for charts
-        const revenueByMonth = calculateMonthlyRevenue(formattedMembers || []);
-        setRevenueData(revenueByMonth);
-
-        // Calculate monthly statistics
-        calculateMonthlyStats(formattedMembers || [], todayAttendance || []);
       } else {
         // Use mock data if no attendance data
         setMockData();
@@ -210,6 +204,12 @@ export default function AdminPanel() {
     }
   }, [fetchData]);
 
+  // Calculate stats when data changes
+  useEffect(() => {
+    if (members.length > 0) {
+      calculateMonthlyStats(members, todayCheckIns);
+    }
+  }, [members, todayCheckIns, calculateMonthlyStats]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
