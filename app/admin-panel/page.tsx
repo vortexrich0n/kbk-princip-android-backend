@@ -189,7 +189,7 @@ export default function AdminPanel() {
       // Use mock data for demo
       setMockData();
     }
-  }, [token, calculateMonthlyRevenue, calculateMonthlyStats, setMockData]);
+  }, [token, calculateMonthlyRevenue, setMockData]);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('adminToken');
@@ -248,7 +248,6 @@ export default function AdminPanel() {
 
         console.log('Admin login successful');
         setToken(data.token);
-        setUser(data.user);
         setIsAuthenticated(true);
         localStorage.setItem('adminToken', data.token);
         localStorage.setItem('adminUser', JSON.stringify(data.user));
@@ -274,7 +273,6 @@ export default function AdminPanel() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setToken('');
-    setUser(null);
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminUser');
   };
