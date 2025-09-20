@@ -1,8 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { format, startOfDay, endOfDay, subDays, startOfMonth } from 'date-fns';
+import { format, subDays, startOfMonth } from 'date-fns';
 
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -12,12 +11,10 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(true);
   const [token, setToken] = useState('');
-  const [user, setUser] = useState<any>(null);
-  const router = useRouter();
 
   // Data states
-  const [todayCheckIns, setTodayCheckIns] = useState([]);
-  const [members, setMembers] = useState([]);
+  const [todayCheckIns, setTodayCheckIns] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
   const [revenueData, setRevenueData] = useState([]);
   const [monthlyStats, setMonthlyStats] = useState({
     totalRevenue: 0,
@@ -33,14 +30,13 @@ export default function AdminPanel() {
       const userData = JSON.parse(savedUser);
       if (userData.role === 'ADMIN') {
         setToken(savedToken);
-        setUser(userData);
         setIsAuthenticated(true);
         fetchData(savedToken);
       }
     }
-  }, []);
+  }, [fetchData]);
 
-  const fetchData = async (authToken?: string) => {
+  const fetchData = useCallback(async (authToken?: string) => {
     const currentToken = authToken || token;
     if (!currentToken) {
       setMockData();
@@ -111,7 +107,7 @@ export default function AdminPanel() {
       // Use mock data for demo
       setMockData();
     }
-  };
+  }, [token]);
 
   const setMockData = () => {
     // Mock data for demonstration
@@ -149,7 +145,7 @@ export default function AdminPanel() {
     });
   };
 
-  const calculateMonthlyRevenue = (members) => {
+  const calculateMonthlyRevenue = (members: any[]) => {
     const monthlyData = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun'];
 
@@ -168,7 +164,7 @@ export default function AdminPanel() {
     return monthlyData;
   };
 
-  const calculateMonthlyStats = (members, checkIns) => {
+  const calculateMonthlyStats = (members: any[], checkIns: any[]) => {
     const now = new Date();
     const monthStart = startOfMonth(now);
 
@@ -186,7 +182,7 @@ export default function AdminPanel() {
     });
   };
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
 
@@ -254,7 +250,7 @@ export default function AdminPanel() {
     localStorage.removeItem('adminUser');
   };
 
-  const handleDeleteMember = async (memberId) => {
+  const handleDeleteMember = async (memberId: string) => {
     if (!confirm('Da li ste sigurni da želite da uklonite ovog člana?')) return;
 
     try {
@@ -278,7 +274,7 @@ export default function AdminPanel() {
     }
   };
 
-  const handleToggleMemberStatus = async (memberId, currentStatus) => {
+  const handleToggleMemberStatus = async (memberId: string, currentStatus: boolean) => {
     try {
       const res = await fetch(`/api/users/${memberId}`, {
         method: 'PATCH',
@@ -954,8 +950,8 @@ export default function AdminPanel() {
                   display: 'grid',
                   gap: '1rem'
                 }}>
-                  {todayCheckIns.map((checkIn, idx) => (
-                    <div key={idx} style={{
+                  {todayCheckIns.map((checkIn) => (
+                    <div key={checkIn.id} style={{
                       padding: '1rem',
                       background: darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
                       borderRadius: '8px',
