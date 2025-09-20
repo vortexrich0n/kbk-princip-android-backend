@@ -39,18 +39,78 @@ export default function AdminPanel() {
     checkInsToday: 0
   });
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem('adminToken');
-    const savedUser = localStorage.getItem('adminUser');
-    if (savedToken && savedUser) {
-      const userData = JSON.parse(savedUser);
-      if (userData.role === 'ADMIN') {
-        setToken(savedToken);
-        setIsAuthenticated(true);
-        fetchData(savedToken);
-      }
+  const calculateMonthlyRevenue = useCallback((members: Member[]) => {
+    const monthlyData = [];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun'];
+
+    for (let i = 5; i >= 0; i--) {
+      const date = subDays(new Date(), i * 30);
+      const monthName = monthNames[5 - i];
+      const activeInMonth = members.filter(m =>
+        new Date(m.createdAt) <= date && m.isActive
+      ).length;
+      monthlyData.push({
+        month: monthName,
+        revenue: activeInMonth * 2500,
+        members: activeInMonth
+      });
     }
-  }, [fetchData]);
+    return monthlyData;
+  }, []);
+
+  const calculateMonthlyStats = useCallback((members: Member[], checkIns: CheckIn[]) => {
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+
+    const activeMembers = members.filter(m => m.isActive).length;
+    const newThisMonth = members.filter(m =>
+      new Date(m.createdAt) >= monthStart
+    ).length;
+    const monthlyRevenue = activeMembers * 2500;
+
+    setMonthlyStats({
+      totalRevenue: monthlyRevenue,
+      activeMembers,
+      newMembers: newThisMonth,
+      checkInsToday: checkIns.length
+    });
+  }, []);
+
+  const setMockData = useCallback(() => {
+    // Mock data for demonstration
+    const mockMembers: Member[] = [
+      { id: '1', name: 'Marko Marković', email: 'marko@example.com', phone: '060/123-4567', isActive: true, createdAt: new Date(2024, 0, 15).toISOString() },
+      { id: '2', name: 'Ana Anić', email: 'ana@example.com', phone: '061/234-5678', isActive: true, createdAt: new Date(2024, 1, 20).toISOString() },
+      { id: '3', name: 'Petar Petrović', email: 'petar@example.com', phone: '062/345-6789', isActive: false, createdAt: new Date(2024, 2, 10).toISOString() },
+      { id: '4', name: 'Milica Milić', email: 'milica@example.com', phone: '063/456-7890', isActive: true, createdAt: new Date(2024, 3, 5).toISOString() },
+      { id: '5', name: 'Stefan Stefanović', email: 'stefan@example.com', phone: '064/567-8901', isActive: true, createdAt: new Date(2024, 4, 12).toISOString() },
+    ];
+    setMembers(mockMembers);
+
+    const mockCheckIns: CheckIn[] = [
+      { id: '1', memberName: 'Marko Marković', memberEmail: 'marko@example.com', checkInTime: new Date().toISOString() },
+      { id: '2', memberName: 'Ana Anić', memberEmail: 'ana@example.com', checkInTime: new Date(Date.now() - 3600000).toISOString() },
+      { id: '3', memberName: 'Milica Milić', memberEmail: 'milica@example.com', checkInTime: new Date(Date.now() - 7200000).toISOString() },
+    ];
+    setTodayCheckIns(mockCheckIns);
+
+    const mockRevenue = [
+      { month: 'Jan', revenue: 25000, members: 10 },
+      { month: 'Feb', revenue: 37500, members: 15 },
+      { month: 'Mar', revenue: 45000, members: 18 },
+      { month: 'Apr', revenue: 50000, members: 20 },
+      { month: 'Maj', revenue: 55000, members: 22 },
+      { month: 'Jun', revenue: 62500, members: 25 },
+    ];
+    setRevenueData(mockRevenue);
+
+    setMonthlyStats({
+      totalRevenue: 62500,
+      activeMembers: 25,
+      newMembers: 3,
+      checkInsToday: 3
+    });
+  }, []);
 
   const fetchData = useCallback(async (authToken?: string) => {
     const currentToken = authToken || token;
@@ -129,80 +189,21 @@ export default function AdminPanel() {
       // Use mock data for demo
       setMockData();
     }
-  }, [token]);
+  }, [token, calculateMonthlyRevenue, calculateMonthlyStats, setMockData]);
 
-  const setMockData = () => {
-    // Mock data for demonstration
-    const mockMembers = [
-      { id: '1', name: 'Marko Marković', email: 'marko@example.com', phone: '060/123-4567', isActive: true, createdAt: new Date(2024, 0, 15).toISOString() },
-      { id: '2', name: 'Ana Anić', email: 'ana@example.com', phone: '061/234-5678', isActive: true, createdAt: new Date(2024, 1, 20).toISOString() },
-      { id: '3', name: 'Petar Petrović', email: 'petar@example.com', phone: '062/345-6789', isActive: false, createdAt: new Date(2024, 2, 10).toISOString() },
-      { id: '4', name: 'Milica Milić', email: 'milica@example.com', phone: '063/456-7890', isActive: true, createdAt: new Date(2024, 3, 5).toISOString() },
-      { id: '5', name: 'Stefan Stefanović', email: 'stefan@example.com', phone: '064/567-8901', isActive: true, createdAt: new Date(2024, 4, 12).toISOString() },
-    ];
-    setMembers(mockMembers);
-
-    const mockCheckIns = [
-      { id: '1', memberName: 'Marko Marković', memberEmail: 'marko@example.com', checkInTime: new Date().toISOString() },
-      { id: '2', memberName: 'Ana Anić', memberEmail: 'ana@example.com', checkInTime: new Date(Date.now() - 3600000).toISOString() },
-      { id: '3', memberName: 'Milica Milić', memberEmail: 'milica@example.com', checkInTime: new Date(Date.now() - 7200000).toISOString() },
-    ];
-    setTodayCheckIns(mockCheckIns);
-
-    const mockRevenue = [
-      { month: 'Jan', revenue: 25000, members: 10 },
-      { month: 'Feb', revenue: 37500, members: 15 },
-      { month: 'Mar', revenue: 45000, members: 18 },
-      { month: 'Apr', revenue: 50000, members: 20 },
-      { month: 'Maj', revenue: 55000, members: 22 },
-      { month: 'Jun', revenue: 62500, members: 25 },
-    ];
-    setRevenueData(mockRevenue);
-
-    setMonthlyStats({
-      totalRevenue: 62500,
-      activeMembers: 25,
-      newMembers: 3,
-      checkInsToday: 3
-    });
-  };
-
-  const calculateMonthlyRevenue = (members: Member[]) => {
-    const monthlyData = [];
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun'];
-
-    for (let i = 5; i >= 0; i--) {
-      const date = subDays(new Date(), i * 30);
-      const monthName = monthNames[5 - i];
-      const activeInMonth = members.filter(m =>
-        new Date(m.createdAt) <= date && m.isActive
-      ).length;
-      monthlyData.push({
-        month: monthName,
-        revenue: activeInMonth * 2500,
-        members: activeInMonth
-      });
+  useEffect(() => {
+    const savedToken = localStorage.getItem('adminToken');
+    const savedUser = localStorage.getItem('adminUser');
+    if (savedToken && savedUser) {
+      const userData = JSON.parse(savedUser);
+      if (userData.role === 'ADMIN') {
+        setToken(savedToken);
+        setIsAuthenticated(true);
+        fetchData(savedToken);
+      }
     }
-    return monthlyData;
-  };
+  }, [fetchData]);
 
-  const calculateMonthlyStats = (members: Member[], checkIns: CheckIn[]) => {
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-
-    const activeMembers = members.filter(m => m.isActive).length;
-    const newThisMonth = members.filter(m =>
-      new Date(m.createdAt) >= monthStart
-    ).length;
-    const monthlyRevenue = activeMembers * 2500;
-
-    setMonthlyStats({
-      totalRevenue: monthlyRevenue,
-      activeMembers,
-      newMembers: newThisMonth,
-      checkInsToday: checkIns.length
-    });
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
