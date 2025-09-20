@@ -29,9 +29,15 @@ export default function AdminPanel() {
     checkInTime: string;
   }
 
+  interface RevenueData {
+    month: string;
+    revenue: number;
+    members: number;
+  }
+
   const [todayCheckIns, setTodayCheckIns] = useState<CheckIn[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [revenueData, setRevenueData] = useState([]);
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [monthlyStats, setMonthlyStats] = useState({
     totalRevenue: 0,
     activeMembers: 0,
