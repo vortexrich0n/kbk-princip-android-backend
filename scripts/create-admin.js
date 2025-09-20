@@ -21,7 +21,7 @@ async function createAdmin() {
       const updatedUser = await prisma.user.update({
         where: { email },
         data: {
-          role: 'admin',
+          role: 'ADMIN',
           emailVerified: true
         }
       });
@@ -36,7 +36,7 @@ async function createAdmin() {
           email,
           passwordHash: hashedPassword,
           name,
-          role: 'admin',
+          role: 'ADMIN',
           emailVerified: true,
           qrData: `admin-${Date.now()}`
         }
