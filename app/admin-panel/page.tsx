@@ -13,8 +13,24 @@ export default function AdminPanel() {
   const [token, setToken] = useState('');
 
   // Data states
-  const [todayCheckIns, setTodayCheckIns] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
+  interface Member {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    isActive: boolean;
+    createdAt: string;
+  }
+
+  interface CheckIn {
+    id: string;
+    memberName: string;
+    memberEmail: string;
+    checkInTime: string;
+  }
+
+  const [todayCheckIns, setTodayCheckIns] = useState<CheckIn[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [revenueData, setRevenueData] = useState([]);
   const [monthlyStats, setMonthlyStats] = useState({
     totalRevenue: 0,
@@ -53,14 +69,17 @@ export default function AdminPanel() {
 
       if (usersRes.ok) {
         const usersData = await usersRes.json();
-        const formattedMembers = usersData.map((user: any) => ({
-          id: user.id,
-          name: user.name || 'N/A',
-          email: user.email,
-          phone: user.phone || 'N/A',
-          isActive: user.membership?.active || false,
-          createdAt: user.createdAt
-        }));
+        const formattedMembers = usersData.map((user: Record<string, unknown>) => {
+          const membership = user.membership as Record<string, unknown> | undefined;
+          return {
+            id: user.id as string,
+            name: (user.name as string) || 'N/A',
+            email: user.email as string,
+            phone: (user.phone as string) || 'N/A',
+            isActive: membership?.active as boolean || false,
+            createdAt: user.createdAt as string
+          };
+        });
         setMembers(formattedMembers);
 
         // Calculate revenue data for charts
@@ -83,13 +102,16 @@ export default function AdminPanel() {
         const attendanceData = await attendanceRes.json();
         const today = new Date().toISOString().split('T')[0];
         const todayAttendance = attendanceData
-          .filter((a: any) => a.checkInTime.startsWith(today))
-          .map((a: any) => ({
-            id: a.id,
-            memberName: a.user?.name || 'N/A',
-            memberEmail: a.user?.email || 'N/A',
-            checkInTime: a.checkInTime
-          }));
+          .filter((a: Record<string, unknown>) => (a.checkInTime as string).startsWith(today))
+          .map((a: Record<string, unknown>) => {
+            const user = a.user as Record<string, unknown> | undefined;
+            return {
+              id: a.id as string,
+              memberName: (user?.name as string) || 'N/A',
+              memberEmail: (user?.email as string) || 'N/A',
+              checkInTime: a.checkInTime as string
+            };
+          });
         setTodayCheckIns(todayAttendance);
 
         // Calculate revenue data for charts
@@ -145,7 +167,7 @@ export default function AdminPanel() {
     });
   };
 
-  const calculateMonthlyRevenue = (members: any[]) => {
+  const calculateMonthlyRevenue = (members: Member[]) => {
     const monthlyData = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun'];
 
@@ -164,7 +186,7 @@ export default function AdminPanel() {
     return monthlyData;
   };
 
-  const calculateMonthlyStats = (members: any[], checkIns: any[]) => {
+  const calculateMonthlyStats = (members: Member[], checkIns: CheckIn[]) => {
     const now = new Date();
     const monthStart = startOfMonth(now);
 
@@ -814,7 +836,7 @@ export default function AdminPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {members.map((member, idx) => (
+                  {members.map((member) => (
                     <tr key={member.id} style={{
                       borderTop: `1px solid ${darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
                       transition: 'background 0.2s'
