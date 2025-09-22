@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { format, subDays, parseISO, isToday, differenceInDays, startOfDay, endOfDay, isValid } from 'date-fns';
+import { format, subDays, parseISO, isToday, differenceInDays, isValid } from 'date-fns';
 
 interface User {
   id: string;
@@ -55,6 +55,13 @@ export default function AdminPanel() {
   // Data states
   const [users, setUsers] = useState<User[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [groupedCheckIns, setGroupedCheckIns] = useState<Record<string, {
+    user: { id: string; name: string | null; email: string };
+    checkins: Array<{ id: string; checkInTime: Date; qrCode: string | null }>;
+    count: number;
+    firstCheckIn: Date;
+    lastCheckIn: Date;
+  }>>({});
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -130,7 +137,7 @@ export default function AdminPanel() {
     try {
       await Promise.all([
         fetchUsers(authToken),
-        fetchCheckIns(authToken),
+        fetchCheckIns(authToken, selectedDate),
         fetchStatistics(authToken)
       ]);
     } catch (error) {
@@ -138,7 +145,8 @@ export default function AdminPanel() {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
 
   const fetchUsers = async (authToken: string) => {
     try {
@@ -164,9 +172,13 @@ export default function AdminPanel() {
     }
   };
 
-  const fetchCheckIns = async (authToken: string) => {
+  const fetchCheckIns = async (authToken: string, date?: string) => {
     try {
-      const response = await fetch('/api/checkins', {
+      const url = date
+        ? `/api/checkins?admin=true&date=${date}`
+        : '/api/checkins?admin=true';
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
@@ -174,17 +186,34 @@ export default function AdminPanel() {
 
       if (response.ok) {
         const data = await response.json();
-        // Ensure data is an array
-        const checkInsArray = Array.isArray(data) ? data :
-                             (data?.checkIns ? data.checkIns : []);
-        setCheckIns(checkInsArray);
+
+        // Handle admin response format
+        if (data?.attendances) {
+          setCheckIns(data.attendances);
+          setGroupedCheckIns(data.groupedByUser || {});
+        }
+        // Handle regular user format (fallback)
+        else if (Array.isArray(data)) {
+          setCheckIns(data);
+          setGroupedCheckIns({});
+        }
+        // Handle old format
+        else if (data?.checkIns) {
+          setCheckIns(data.checkIns);
+          setGroupedCheckIns({});
+        } else {
+          setCheckIns([]);
+          setGroupedCheckIns({});
+        }
       } else {
         console.error('Failed to fetch check-ins:', response.status);
         setCheckIns([]);
+        setGroupedCheckIns({});
       }
     } catch (error) {
       console.error('Error fetching check-ins:', error);
       setCheckIns([]);
+      setGroupedCheckIns({});
     }
   };
 
@@ -386,18 +415,6 @@ export default function AdminPanel() {
     }
   };
 
-  // Get check-ins for selected date
-  const getCheckInsForDate = (date: string) => {
-    return Array.isArray(checkIns) ? checkIns.filter(c => {
-      try {
-        if (!c.checkInTime) return false;
-        const checkInDate = parseISO(c.checkInTime);
-        return isValid(checkInDate) && format(checkInDate, 'yyyy-MM-dd') === date;
-      } catch {
-        return false;
-      }
-    }) : [];
-  };
 
   // Filter users based on search (with safety check)
   const filteredUsers = Array.isArray(users) ? users.filter(user =>
@@ -1074,7 +1091,13 @@ export default function AdminPanel() {
               <input
                 type="date"
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                onChange={async (e) => {
+                  setSelectedDate(e.target.value);
+                  const token = localStorage.getItem('adminToken');
+                  if (token) {
+                    await fetchCheckIns(token, e.target.value);
+                  }
+                }}
                 max={format(new Date(), 'yyyy-MM-dd')}
                 style={{
                   padding: '12px 16px',
@@ -1093,14 +1116,78 @@ export default function AdminPanel() {
               Prijave za {safeFormatDate(selectedDate, 'dd.MM.yyyy')}
             </h2>
 
+            {/* Summary Cards */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: window.innerWidth > 768 ? 'repeat(3, 1fr)' : '1fr',
+              gap: '16px',
+              marginBottom: '24px'
+            }}>
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.7)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '16px',
+                padding: '20px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ color: '#9ca3af', fontSize: '0.875rem', marginBottom: '8px' }}>
+                  Ukupno prijava
+                </div>
+                <div style={{ fontSize: '2rem', fontWeight: '700', color: '#dc2626' }}>
+                  {checkIns.length}
+                </div>
+              </div>
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.7)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '16px',
+                padding: '20px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ color: '#9ca3af', fontSize: '0.875rem', marginBottom: '8px' }}>
+                  Jedinstvenih korisnika
+                </div>
+                <div style={{ fontSize: '2rem', fontWeight: '700', color: '#dc2626' }}>
+                  {Object.keys(groupedCheckIns).length}
+                </div>
+              </div>
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.7)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '16px',
+                padding: '20px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ color: '#9ca3af', fontSize: '0.875rem', marginBottom: '8px' }}>
+                  Prosek po korisniku
+                </div>
+                <div style={{ fontSize: '2rem', fontWeight: '700', color: '#dc2626' }}>
+                  {Object.keys(groupedCheckIns).length > 0
+                    ? (checkIns.length / Object.keys(groupedCheckIns).length).toFixed(1)
+                    : '0'}
+                </div>
+              </div>
+            </div>
+
+            {/* Grouped Check-ins by User */}
             <div style={{
               background: 'rgba(0, 0, 0, 0.7)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: '16px',
               overflow: 'hidden',
-              backdropFilter: 'blur(10px)'
+              backdropFilter: 'blur(10px)',
+              marginBottom: '24px'
             }}>
-              {getCheckInsForDate(selectedDate).length === 0 ? (
+              <div style={{
+                background: 'rgba(220, 38, 38, 0.1)',
+                padding: '16px 24px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>
+                  Prijave po korisniku
+                </h3>
+              </div>
+              {Object.keys(groupedCheckIns).length === 0 ? (
                 <div style={{
                   padding: '48px',
                   textAlign: 'center',
@@ -1110,48 +1197,67 @@ export default function AdminPanel() {
                   Nema prijava za izabrani datum
                 </div>
               ) : (
-                <table style={{
-                  width: '100%',
-                  borderCollapse: 'collapse'
-                }}>
-                  <thead>
-                    <tr style={{
-                      background: 'rgba(220, 38, 38, 0.1)',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-                    }}>
-                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Vreme</th>
-                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Ime</th>
-                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Email</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getCheckInsForDate(selectedDate)
-                      .sort((a, b) => {
-                        try {
-                          return new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime();
-                        } catch {
-                          return 0;
-                        }
-                      })
-                      .map((checkIn) => (
-                        <tr
-                          key={checkIn.id}
-                          style={{
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                            transition: 'background 0.3s'
-                          }}
-                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                        >
-                          <td style={{ padding: '16px', fontSize: '0.875rem', fontWeight: '600' }}>
-                            {safeFormatDate(checkIn.checkInTime, 'HH:mm')}
-                          </td>
-                          <td style={{ padding: '16px', fontSize: '0.875rem' }}>{checkIn.user?.name || 'N/A'}</td>
-                          <td style={{ padding: '16px', fontSize: '0.875rem', color: '#9ca3af' }}>{checkIn.user?.email || 'N/A'}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+                <div style={{ padding: '16px' }}>
+                  {Object.values(groupedCheckIns)
+                    .sort((a, b) => b.count - a.count)
+                    .map((group) => (
+                      <div
+                        key={group.user.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '16px',
+                          marginBottom: '12px',
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid rgba(255, 255, 255, 0.05)',
+                          borderRadius: '12px',
+                          transition: 'all 0.3s'
+                        }}
+                        onMouseEnter={e => {
+                          (e.currentTarget.style.background = 'rgba(255,255,255,0.05)');
+                          (e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)');
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget.style.background = 'rgba(255,255,255,0.02)');
+                          (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)');
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '4px' }}>
+                            {group.user.name || 'N/A'}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+                            {group.user.email}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '8px' }}>
+                            Prvi check-in: {safeFormatDate(group.firstCheckIn.toString(), 'HH:mm')} |
+                            Poslednji: {safeFormatDate(group.lastCheckIn.toString(), 'HH:mm')}
+                          </div>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '16px'
+                        }}>
+                          <div style={{
+                            padding: '8px 16px',
+                            background: 'rgba(220, 38, 38, 0.1)',
+                            border: '1px solid rgba(220, 38, 38, 0.3)',
+                            borderRadius: '8px',
+                            fontSize: '1.25rem',
+                            fontWeight: '700',
+                            color: '#dc2626'
+                          }}>
+                            {group.count}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+                            check-in{group.count > 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
               )}
             </div>
 
