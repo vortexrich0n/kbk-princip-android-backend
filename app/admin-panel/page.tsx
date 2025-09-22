@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isToday, differenceInDays } from 'date-fns';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { format, subDays, parseISO, isToday, differenceInDays, startOfDay, endOfDay, isValid } from 'date-fns';
 
 interface User {
   id: string;
@@ -58,11 +58,15 @@ export default function AdminPanel() {
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDateRange, setSelectedDateRange] = useState('7d');
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Loading states for individual actions
+  const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+  const [deletingUser, setDeletingUser] = useState<string | null>(null);
 
   // Check for existing token
   useEffect(() => {
@@ -121,7 +125,7 @@ export default function AdminPanel() {
     setStatistics(null);
   };
 
-  const fetchAllData = async (authToken: string) => {
+  const fetchAllData = useCallback(async (authToken: string) => {
     setRefreshing(true);
     try {
       await Promise.all([
@@ -134,7 +138,7 @@ export default function AdminPanel() {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, []);
 
   const fetchUsers = async (authToken: string) => {
     try {
@@ -228,10 +232,12 @@ export default function AdminPanel() {
           u.membership && !u.membership.active
         ).length;
 
-        // Today's check-ins
+        // Today's check-ins with safe date parsing
         const todayCheckIns = checkInsData.filter(c => {
           try {
-            return c.checkInTime && isToday(parseISO(c.checkInTime));
+            if (!c.checkInTime) return false;
+            const date = parseISO(c.checkInTime);
+            return isValid(date) && isToday(date);
           } catch {
             return false;
           }
@@ -248,7 +254,7 @@ export default function AdminPanel() {
             try {
               if (!c.checkInTime) return false;
               const checkInDate = parseISO(c.checkInTime);
-              return format(checkInDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+              return isValid(checkInDate) && format(checkInDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
             } catch {
               return false;
             }
@@ -280,7 +286,7 @@ export default function AdminPanel() {
             try {
               if (!u.createdAt) return false;
               const createdDate = parseISO(u.createdAt);
-              return createdDate <= date && u.membership?.active;
+              return isValid(createdDate) && createdDate <= date && u.membership?.active;
             } catch {
               return false;
             }
@@ -310,6 +316,7 @@ export default function AdminPanel() {
   };
 
   const toggleMembershipStatus = async (userId: string, currentStatus: boolean) => {
+    setUpdatingUser(userId);
     try {
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PATCH',
@@ -318,26 +325,33 @@ export default function AdminPanel() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          membership: {
-            active: !currentStatus,
-            expiresAt: !currentStatus
-              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-              : new Date().toISOString()
-          }
+          active: !currentStatus,
+          expiresAt: !currentStatus
+            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            : new Date().toISOString(),
+          type: 'STANDARD'
         })
       });
 
       if (response.ok) {
-        fetchAllData(token);
+        await fetchAllData(token);
+      } else {
+        const error = await response.json();
+        console.error('Error updating membership:', error);
+        alert('Greška pri ažuriranju članarine: ' + (error.error || 'Nepoznata greška'));
       }
     } catch (error) {
       console.error('Error updating membership:', error);
+      alert('Greška pri ažuriranju članarine');
+    } finally {
+      setUpdatingUser(null);
     }
   };
 
   const deleteUser = async (userId: string) => {
     if (!confirm('Da li ste sigurni da želite obrisati ovog korisnika?')) return;
 
+    setDeletingUser(userId);
     try {
       const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
@@ -347,11 +361,42 @@ export default function AdminPanel() {
       });
 
       if (response.ok) {
-        fetchAllData(token);
+        await fetchAllData(token);
+      } else {
+        const error = await response.json();
+        alert('Greška pri brisanju korisnika: ' + (error.error || 'Nepoznata greška'));
       }
     } catch (error) {
       console.error('Error deleting user:', error);
+      alert('Greška pri brisanju korisnika');
+    } finally {
+      setDeletingUser(null);
     }
+  };
+
+  // Safe date formatting function
+  const safeFormatDate = (dateString: string | undefined, formatStr: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = parseISO(dateString);
+      if (!isValid(date)) return 'N/A';
+      return format(date, formatStr);
+    } catch {
+      return 'N/A';
+    }
+  };
+
+  // Get check-ins for selected date
+  const getCheckInsForDate = (date: string) => {
+    return Array.isArray(checkIns) ? checkIns.filter(c => {
+      try {
+        if (!c.checkInTime) return false;
+        const checkInDate = parseISO(c.checkInTime);
+        return isValid(checkInDate) && format(checkInDate, 'yyyy-MM-dd') === date;
+      } catch {
+        return false;
+      }
+    }) : [];
   };
 
   // Filter users based on search (with safety check)
@@ -368,11 +413,11 @@ export default function AdminPanel() {
 
   // Chart colors
   const COLORS = ['#dc2626', '#16a34a', '#6b7280'];
-  const CHART_COLORS = {
-    primary: '#dc2626',
-    secondary: '#fbbf24',
-    tertiary: '#16a34a',
-    background: 'rgba(220, 38, 38, 0.1)'
+
+  // Styles
+  const styles = {
+    fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif",
+    mobileBreakpoint: '@media (max-width: 768px)'
   };
 
   if (!isAuthenticated) {
@@ -383,53 +428,58 @@ export default function AdminPanel() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px'
+        padding: '20px',
+        fontFamily: styles.fontFamily
       }}>
         <div style={{
-          background: 'rgba(0, 0, 0, 0.8)',
-          borderRadius: '20px',
+          background: 'rgba(0, 0, 0, 0.9)',
+          borderRadius: '24px',
           padding: '40px',
-          maxWidth: '400px',
+          maxWidth: '420px',
           width: '100%',
           border: '1px solid rgba(220, 38, 38, 0.3)',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(10px)'
         }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '35px' }}>
             <h1 style={{
               color: '#fff',
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              marginBottom: '10px'
+              fontSize: '2.25rem',
+              fontWeight: '700',
+              marginBottom: '8px',
+              letterSpacing: '-0.025em'
             }}>
               KBK PRINCIP
             </h1>
-            <p style={{ color: '#999', fontSize: '1rem' }}>Admin Panel</p>
+            <p style={{ color: '#9ca3af', fontSize: '1rem', fontWeight: '500' }}>Admin Panel</p>
           </div>
 
           {loginError && (
             <div style={{
               background: 'rgba(220, 38, 38, 0.1)',
               border: '1px solid rgba(220, 38, 38, 0.3)',
-              borderRadius: '10px',
-              padding: '12px',
-              marginBottom: '20px',
+              borderRadius: '12px',
+              padding: '14px',
+              marginBottom: '24px',
               color: '#ef4444',
               fontSize: '0.9rem',
-              textAlign: 'center'
+              textAlign: 'center',
+              fontWeight: '500'
             }}>
               {loginError}
             </div>
           )}
 
           <form onSubmit={handleLogin}>
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '24px' }}>
               <label style={{
                 display: 'block',
-                color: '#ccc',
-                fontSize: '0.9rem',
-                marginBottom: '8px'
+                color: '#d1d5db',
+                fontSize: '0.875rem',
+                marginBottom: '8px',
+                fontWeight: '500'
               }}>
-                Email
+                Email adresa
               </label>
               <input
                 type="email"
@@ -438,26 +488,28 @@ export default function AdminPanel() {
                 required
                 style={{
                   width: '100%',
-                  padding: '12px',
+                  padding: '12px 16px',
                   background: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '10px',
+                  borderRadius: '12px',
                   color: '#fff',
                   fontSize: '1rem',
                   outline: 'none',
-                  transition: 'all 0.3s'
+                  transition: 'all 0.3s',
+                  fontFamily: styles.fontFamily
                 }}
                 onFocus={(e) => e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)'}
                 onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
               />
             </div>
 
-            <div style={{ marginBottom: '30px' }}>
+            <div style={{ marginBottom: '32px' }}>
               <label style={{
                 display: 'block',
-                color: '#ccc',
-                fontSize: '0.9rem',
-                marginBottom: '8px'
+                color: '#d1d5db',
+                fontSize: '0.875rem',
+                marginBottom: '8px',
+                fontWeight: '500'
               }}>
                 Lozinka
               </label>
@@ -468,14 +520,15 @@ export default function AdminPanel() {
                 required
                 style={{
                   width: '100%',
-                  padding: '12px',
+                  padding: '12px 16px',
                   background: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '10px',
+                  borderRadius: '12px',
                   color: '#fff',
                   fontSize: '1rem',
                   outline: 'none',
-                  transition: 'all 0.3s'
+                  transition: 'all 0.3s',
+                  fontFamily: styles.fontFamily
                 }}
                 onFocus={(e) => e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)'}
                 onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
@@ -488,15 +541,17 @@ export default function AdminPanel() {
               style={{
                 width: '100%',
                 padding: '14px',
-                background: isLoading ? '#666' : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                background: isLoading ? '#4b5563' : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
                 color: '#fff',
                 border: 'none',
-                borderRadius: '10px',
+                borderRadius: '12px',
                 fontSize: '1rem',
-                fontWeight: 'bold',
+                fontWeight: '600',
                 cursor: isLoading ? 'not-allowed' : 'pointer',
-                transition: 'transform 0.2s',
-                opacity: isLoading ? 0.7 : 1
+                transition: 'all 0.3s',
+                opacity: isLoading ? 0.7 : 1,
+                transform: 'translateY(0)',
+                letterSpacing: '-0.01em'
               }}
               onMouseEnter={e => !isLoading && ((e.target as HTMLButtonElement).style.transform = 'translateY(-2px)')}
               onMouseLeave={e => !isLoading && ((e.target as HTMLButtonElement).style.transform = 'translateY(0)')}
@@ -513,24 +568,30 @@ export default function AdminPanel() {
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0000 100%)',
-      color: '#fff'
+      color: '#fff',
+      fontFamily: styles.fontFamily
     }}>
       {/* Header */}
       <div style={{
-        background: 'rgba(0, 0, 0, 0.9)',
+        background: 'rgba(0, 0, 0, 0.95)',
         borderBottom: '1px solid rgba(220, 38, 38, 0.3)',
-        padding: '20px 30px',
+        padding: '16px 24px',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        backdropFilter: 'blur(10px)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <h1 style={{
-            fontSize: '1.8rem',
-            fontWeight: 'bold',
+            fontSize: '1.5rem',
+            fontWeight: '700',
             background: 'linear-gradient(135deg, #dc2626 0%, #fbbf24 100%)',
             WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.025em'
           }}>
             KBK PRINCIP Admin
           </h1>
@@ -539,29 +600,31 @@ export default function AdminPanel() {
             disabled={refreshing}
             style={{
               padding: '8px 16px',
-              background: refreshing ? '#333' : 'rgba(220, 38, 38, 0.1)',
+              background: refreshing ? '#374151' : 'rgba(220, 38, 38, 0.1)',
               border: '1px solid rgba(220, 38, 38, 0.3)',
               borderRadius: '8px',
-              color: refreshing ? '#666' : '#fff',
+              color: refreshing ? '#6b7280' : '#fff',
               cursor: refreshing ? 'not-allowed' : 'pointer',
-              fontSize: '0.9rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
               transition: 'all 0.3s'
             }}
           >
-            {refreshing ? 'Osvežavanje...' : '🔄 Osveži'}
+            {refreshing ? 'Osvežavanje...' : '↻ Osveži'}
           </button>
         </div>
 
         <button
           onClick={handleLogout}
           style={{
-            padding: '10px 20px',
+            padding: '8px 16px',
             background: 'rgba(220, 38, 38, 0.1)',
             border: '1px solid rgba(220, 38, 38, 0.3)',
-            borderRadius: '10px',
+            borderRadius: '8px',
             color: '#ef4444',
             cursor: 'pointer',
-            fontSize: '0.95rem',
+            fontSize: '0.875rem',
+            fontWeight: '500',
             transition: 'all 0.3s'
           }}
           onMouseEnter={e => {
@@ -577,47 +640,50 @@ export default function AdminPanel() {
 
       {/* Navigation Tabs */}
       <div style={{
-        background: 'rgba(0, 0, 0, 0.5)',
+        background: 'rgba(0, 0, 0, 0.6)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        padding: '0 30px',
+        padding: '0 24px',
         display: 'flex',
-        gap: '10px'
+        gap: '8px',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch'
       }}>
         {['dashboard', 'users', 'checkins', 'statistics'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              padding: '15px 25px',
+              padding: '14px 24px',
               background: activeTab === tab ? 'rgba(220, 38, 38, 0.2)' : 'transparent',
               border: 'none',
               borderBottom: activeTab === tab ? '2px solid #dc2626' : '2px solid transparent',
-              color: activeTab === tab ? '#fff' : '#999',
+              color: activeTab === tab ? '#fff' : '#9ca3af',
               cursor: 'pointer',
-              fontSize: '0.95rem',
-              fontWeight: activeTab === tab ? 'bold' : 'normal',
+              fontSize: '0.875rem',
+              fontWeight: activeTab === tab ? '600' : '500',
               transition: 'all 0.3s',
-              textTransform: 'capitalize'
+              whiteSpace: 'nowrap',
+              letterSpacing: '-0.01em'
             }}
           >
-            {tab === 'dashboard' ? 'Kontrolna tabla' :
-             tab === 'users' ? 'Korisnici' :
-             tab === 'checkins' ? 'Prijave' :
-             'Statistika'}
+            {tab === 'dashboard' ? '📊 Kontrolna tabla' :
+             tab === 'users' ? '👥 Korisnici' :
+             tab === 'checkins' ? '📍 Prijave' :
+             '📈 Statistika'}
           </button>
         ))}
       </div>
 
       {/* Content */}
-      <div style={{ padding: '30px' }}>
+      <div style={{ padding: '24px' }}>
         {activeTab === 'dashboard' && statistics && (
           <div>
             {/* Stats Cards */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
               gap: '20px',
-              marginBottom: '30px'
+              marginBottom: '32px'
             }}>
               {[
                 { label: 'Ukupno korisnika', value: statistics.totalUsers, icon: '👥', color: '#3b82f6' },
@@ -628,16 +694,17 @@ export default function AdminPanel() {
                 <div
                   key={index}
                   style={{
-                    background: 'rgba(0, 0, 0, 0.6)',
+                    background: 'rgba(0, 0, 0, 0.7)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '15px',
-                    padding: '25px',
+                    borderRadius: '16px',
+                    padding: '24px',
                     position: 'relative',
                     overflow: 'hidden',
-                    transition: 'transform 0.3s',
-                    cursor: 'pointer'
+                    transition: 'all 0.3s',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(10px)'
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-5px)')}
+                  onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')}
                   onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
                 >
                   <div style={{
@@ -650,14 +717,15 @@ export default function AdminPanel() {
                     {stat.icon}
                   </div>
                   <div style={{ position: 'relative', zIndex: 1 }}>
-                    <p style={{ color: '#999', fontSize: '0.9rem', marginBottom: '8px' }}>
+                    <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginBottom: '8px', fontWeight: '500' }}>
                       {stat.label}
                     </p>
                     <p style={{
                       fontSize: '2rem',
-                      fontWeight: 'bold',
+                      fontWeight: '700',
                       color: stat.color,
-                      margin: 0
+                      margin: 0,
+                      letterSpacing: '-0.025em'
                     }}>
                       {stat.value}
                     </p>
@@ -669,17 +737,18 @@ export default function AdminPanel() {
             {/* Charts Grid */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+              gridTemplateColumns: window.innerWidth > 768 ? 'repeat(2, 1fr)' : '1fr',
               gap: '20px'
             }}>
               {/* Revenue Chart */}
               <div style={{
-                background: 'rgba(0, 0, 0, 0.6)',
+                background: 'rgba(0, 0, 0, 0.7)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '15px',
-                padding: '20px'
+                borderRadius: '16px',
+                padding: '24px',
+                backdropFilter: 'blur(10px)'
               }}>
-                <h3 style={{ marginBottom: '20px', color: '#fff' }}>Prihodi po mesecima</h3>
+                <h3 style={{ marginBottom: '20px', fontSize: '1.125rem', fontWeight: '600' }}>Prihodi po mesecima</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={statistics.revenueHistory}>
                     <defs>
@@ -689,13 +758,14 @@ export default function AdminPanel() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                    <XAxis dataKey="month" stroke="#999" />
-                    <YAxis stroke="#999" />
+                    <XAxis dataKey="month" stroke="#9ca3af" />
+                    <YAxis stroke="#9ca3af" />
                     <Tooltip
                       contentStyle={{
                         background: 'rgba(0,0,0,0.9)',
                         border: '1px solid rgba(220,38,38,0.3)',
-                        borderRadius: '10px'
+                        borderRadius: '12px',
+                        padding: '12px'
                       }}
                     />
                     <Area
@@ -712,12 +782,13 @@ export default function AdminPanel() {
 
               {/* Membership Distribution */}
               <div style={{
-                background: 'rgba(0, 0, 0, 0.6)',
+                background: 'rgba(0, 0, 0, 0.7)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '15px',
-                padding: '20px'
+                borderRadius: '16px',
+                padding: '24px',
+                backdropFilter: 'blur(10px)'
               }}>
-                <h3 style={{ marginBottom: '20px', color: '#fff' }}>Distribucija članstva</h3>
+                <h3 style={{ marginBottom: '20px', fontSize: '1.125rem', fontWeight: '600' }}>Distribucija članstva</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
@@ -731,7 +802,8 @@ export default function AdminPanel() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {statistics.membershipDistribution.map((entry, index) => (
+                      {statistics.membershipDistribution && Array.isArray(statistics.membershipDistribution) &&
+                       statistics.membershipDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -739,7 +811,8 @@ export default function AdminPanel() {
                       contentStyle={{
                         background: 'rgba(0,0,0,0.9)',
                         border: '1px solid rgba(220,38,38,0.3)',
-                        borderRadius: '10px'
+                        borderRadius: '12px',
+                        padding: '12px'
                       }}
                     />
                   </PieChart>
@@ -753,10 +826,11 @@ export default function AdminPanel() {
           <div>
             {/* Search and filters */}
             <div style={{
-              marginBottom: '20px',
+              marginBottom: '24px',
               display: 'flex',
-              gap: '20px',
-              alignItems: 'center'
+              gap: '16px',
+              alignItems: 'center',
+              flexWrap: 'wrap'
             }}>
               <input
                 type="text"
@@ -765,46 +839,50 @@ export default function AdminPanel() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
                   flex: 1,
-                  padding: '12px 20px',
+                  minWidth: '200px',
+                  padding: '12px 16px',
                   background: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '10px',
+                  borderRadius: '12px',
                   color: '#fff',
-                  fontSize: '1rem',
-                  outline: 'none'
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  fontFamily: styles.fontFamily
                 }}
               />
-              <div style={{ color: '#999' }}>
+              <div style={{ color: '#9ca3af', fontSize: '0.875rem', fontWeight: '500' }}>
                 Ukupno: {filteredUsers.length} korisnika
               </div>
             </div>
 
             {/* Users Table */}
             <div style={{
-              background: 'rgba(0, 0, 0, 0.6)',
+              background: 'rgba(0, 0, 0, 0.7)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '15px',
-              overflow: 'hidden'
+              borderRadius: '16px',
+              overflow: 'auto',
+              backdropFilter: 'blur(10px)'
             }}>
               <table style={{
                 width: '100%',
-                borderCollapse: 'collapse'
+                borderCollapse: 'collapse',
+                minWidth: '700px'
               }}>
                 <thead>
                   <tr style={{
                     background: 'rgba(220, 38, 38, 0.1)',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
                   }}>
-                    <th style={{ padding: '15px', textAlign: 'left' }}>Ime</th>
-                    <th style={{ padding: '15px', textAlign: 'left' }}>Email</th>
-                    <th style={{ padding: '15px', textAlign: 'left' }}>Telefon</th>
-                    <th style={{ padding: '15px', textAlign: 'left' }}>Status</th>
-                    <th style={{ padding: '15px', textAlign: 'left' }}>Članarina</th>
-                    <th style={{ padding: '15px', textAlign: 'center' }}>Akcije</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Ime</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Email</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Telefon</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Status</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Članarina</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>Akcije</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentUsers.map((user) => (
+                  {Array.isArray(currentUsers) && currentUsers.map((user) => (
                     <tr
                       key={user.id}
                       style={{
@@ -814,28 +892,29 @@ export default function AdminPanel() {
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <td style={{ padding: '15px' }}>
+                      <td style={{ padding: '16px' }}>
                         <div>
-                          <div style={{ fontWeight: 'bold' }}>{user.name || 'N/A'}</div>
-                          <div style={{ fontSize: '0.85rem', color: '#999' }}>
+                          <div style={{ fontWeight: '600', fontSize: '0.875rem' }}>{user.name || 'N/A'}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>
                             {user.role === 'ADMIN' ? '👑 Admin' : '👤 Korisnik'}
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '15px' }}>
+                      <td style={{ padding: '16px', fontSize: '0.875rem' }}>
                         <div>
                           {user.email}
                           {user.emailVerified && (
-                            <span style={{ color: '#16a34a', marginLeft: '5px' }}>✓</span>
+                            <span style={{ color: '#16a34a', marginLeft: '6px' }}>✓</span>
                           )}
                         </div>
                       </td>
-                      <td style={{ padding: '15px' }}>{user.phone || 'N/A'}</td>
-                      <td style={{ padding: '15px' }}>
+                      <td style={{ padding: '16px', fontSize: '0.875rem' }}>{user.phone || 'N/A'}</td>
+                      <td style={{ padding: '16px' }}>
                         <span style={{
-                          padding: '5px 10px',
-                          borderRadius: '20px',
-                          fontSize: '0.85rem',
+                          padding: '4px 12px',
+                          borderRadius: '9999px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
                           background: user.membership?.active
                             ? 'rgba(16, 163, 74, 0.2)'
                             : 'rgba(239, 68, 68, 0.2)',
@@ -845,60 +924,81 @@ export default function AdminPanel() {
                           {user.membership?.active ? 'Aktivan' : 'Neaktivan'}
                         </span>
                       </td>
-                      <td style={{ padding: '15px' }}>
+                      <td style={{ padding: '16px', fontSize: '0.875rem' }}>
                         {user.membership?.expiresAt ? (
                           <div>
-                            <div>Ističe: {format(parseISO(user.membership.expiresAt), 'dd.MM.yyyy')}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#999' }}>
-                              {differenceInDays(parseISO(user.membership.expiresAt), new Date())} dana
+                            <div>Ističe: {safeFormatDate(user.membership.expiresAt, 'dd.MM.yyyy')}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                              {(() => {
+                                try {
+                                  const days = differenceInDays(parseISO(user.membership.expiresAt), new Date());
+                                  return `${days} dana`;
+                                } catch {
+                                  return 'N/A';
+                                }
+                              })()}
                             </div>
                           </div>
                         ) : (
                           'Nema članarine'
                         )}
                       </td>
-                      <td style={{ padding: '15px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                           <button
                             onClick={() => toggleMembershipStatus(user.id, user.membership?.active || false)}
+                            disabled={updatingUser === user.id}
                             style={{
                               padding: '6px 12px',
-                              background: 'rgba(251, 191, 36, 0.1)',
+                              background: updatingUser === user.id ? '#374151' : 'rgba(251, 191, 36, 0.1)',
                               border: '1px solid rgba(251, 191, 36, 0.3)',
-                              borderRadius: '6px',
-                              color: '#fbbf24',
-                              cursor: 'pointer',
-                              fontSize: '0.85rem'
+                              borderRadius: '8px',
+                              color: updatingUser === user.id ? '#6b7280' : '#fbbf24',
+                              cursor: updatingUser === user.id ? 'not-allowed' : 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              transition: 'all 0.3s'
                             }}
                             onMouseEnter={e => {
-                              (e.target as HTMLElement).style.background = 'rgba(251, 191, 36, 0.2)';
+                              if (updatingUser !== user.id) {
+                                (e.target as HTMLElement).style.background = 'rgba(251, 191, 36, 0.2)';
+                              }
                             }}
                             onMouseLeave={e => {
-                              (e.target as HTMLElement).style.background = 'rgba(251, 191, 36, 0.1)';
+                              if (updatingUser !== user.id) {
+                                (e.target as HTMLElement).style.background = 'rgba(251, 191, 36, 0.1)';
+                              }
                             }}
                           >
-                            {user.membership?.active ? 'Deaktiviraj' : 'Aktiviraj'}
+                            {updatingUser === user.id ? '...' : (user.membership?.active ? 'Deaktiviraj' : 'Aktiviraj')}
                           </button>
                           {user.role !== 'ADMIN' && (
                             <button
                               onClick={() => deleteUser(user.id)}
+                              disabled={deletingUser === user.id}
                               style={{
                                 padding: '6px 12px',
-                                background: 'rgba(239, 68, 68, 0.1)',
+                                background: deletingUser === user.id ? '#374151' : 'rgba(239, 68, 68, 0.1)',
                                 border: '1px solid rgba(239, 68, 68, 0.3)',
-                                borderRadius: '6px',
-                                color: '#ef4444',
-                                cursor: 'pointer',
-                                fontSize: '0.85rem'
+                                borderRadius: '8px',
+                                color: deletingUser === user.id ? '#6b7280' : '#ef4444',
+                                cursor: deletingUser === user.id ? 'not-allowed' : 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                transition: 'all 0.3s'
                               }}
                               onMouseEnter={e => {
-                                (e.target as HTMLElement).style.background = 'rgba(239, 68, 68, 0.2)';
+                                if (deletingUser !== user.id) {
+                                  (e.target as HTMLElement).style.background = 'rgba(239, 68, 68, 0.2)';
+                                }
                               }}
                               onMouseLeave={e => {
-                                (e.target as HTMLElement).style.background = 'rgba(239, 68, 68, 0.1)';
+                                if (deletingUser !== user.id) {
+                                  (e.target as HTMLElement).style.background = 'rgba(239, 68, 68, 0.1)';
+                                }
                               }}
                             >
-                              Obriši
+                              {deletingUser === user.id ? '...' : 'Obriši'}
                             </button>
                           )}
                         </div>
@@ -914,35 +1014,40 @@ export default function AdminPanel() {
                   padding: '20px',
                   display: 'flex',
                   justifyContent: 'center',
-                  gap: '10px'
+                  gap: '8px',
+                  flexWrap: 'wrap'
                 }}>
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                     style={{
-                      padding: '8px 15px',
-                      background: currentPage === 1 ? '#333' : 'rgba(220, 38, 38, 0.1)',
+                      padding: '8px 16px',
+                      background: currentPage === 1 ? '#374151' : 'rgba(220, 38, 38, 0.1)',
                       border: '1px solid rgba(220, 38, 38, 0.3)',
                       borderRadius: '8px',
-                      color: currentPage === 1 ? '#666' : '#fff',
-                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                      color: currentPage === 1 ? '#6b7280' : '#fff',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: '500'
                     }}
                   >
                     Prethodna
                   </button>
-                  <span style={{ padding: '8px 15px', color: '#999' }}>
+                  <span style={{ padding: '8px 16px', color: '#9ca3af', fontSize: '0.875rem' }}>
                     Strana {currentPage} od {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                     style={{
-                      padding: '8px 15px',
-                      background: currentPage === totalPages ? '#333' : 'rgba(220, 38, 38, 0.1)',
+                      padding: '8px 16px',
+                      background: currentPage === totalPages ? '#374151' : 'rgba(220, 38, 38, 0.1)',
                       border: '1px solid rgba(220, 38, 38, 0.3)',
                       borderRadius: '8px',
-                      color: currentPage === totalPages ? '#666' : '#fff',
-                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+                      color: currentPage === totalPages ? '#6b7280' : '#fff',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: '500'
                     }}
                   >
                     Sledeća
@@ -955,20 +1060,54 @@ export default function AdminPanel() {
 
         {activeTab === 'checkins' && (
           <div>
-            <h2 style={{ marginBottom: '20px' }}>Današnje prijave</h2>
+            {/* Date Selector */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                color: '#9ca3af',
+                fontSize: '0.875rem',
+                marginBottom: '8px',
+                fontWeight: '500'
+              }}>
+                Izaberite datum
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                max={format(new Date(), 'yyyy-MM-dd')}
+                style={{
+                  padding: '12px 16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  color: '#fff',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  fontFamily: styles.fontFamily
+                }}
+              />
+            </div>
+
+            <h2 style={{ marginBottom: '20px', fontSize: '1.25rem', fontWeight: '600' }}>
+              Prijave za {safeFormatDate(selectedDate, 'dd.MM.yyyy')}
+            </h2>
+
             <div style={{
-              background: 'rgba(0, 0, 0, 0.6)',
+              background: 'rgba(0, 0, 0, 0.7)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '15px',
-              overflow: 'hidden'
+              borderRadius: '16px',
+              overflow: 'hidden',
+              backdropFilter: 'blur(10px)'
             }}>
-              {checkIns.filter(c => isToday(parseISO(c.checkInTime))).length === 0 ? (
+              {getCheckInsForDate(selectedDate).length === 0 ? (
                 <div style={{
-                  padding: '40px',
+                  padding: '48px',
                   textAlign: 'center',
-                  color: '#999'
+                  color: '#9ca3af',
+                  fontSize: '0.875rem'
                 }}>
-                  Nema prijava za danas
+                  Nema prijava za izabrani datum
                 </div>
               ) : (
                 <table style={{
@@ -980,15 +1119,20 @@ export default function AdminPanel() {
                       background: 'rgba(220, 38, 38, 0.1)',
                       borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
                     }}>
-                      <th style={{ padding: '15px', textAlign: 'left' }}>Vreme</th>
-                      <th style={{ padding: '15px', textAlign: 'left' }}>Ime</th>
-                      <th style={{ padding: '15px', textAlign: 'left' }}>Email</th>
+                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Vreme</th>
+                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Ime</th>
+                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>Email</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {checkIns
-                      .filter(c => isToday(parseISO(c.checkInTime)))
-                      .sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime())
+                    {getCheckInsForDate(selectedDate)
+                      .sort((a, b) => {
+                        try {
+                          return new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime();
+                        } catch {
+                          return 0;
+                        }
+                      })
                       .map((checkIn) => (
                         <tr
                           key={checkIn.id}
@@ -999,11 +1143,11 @@ export default function AdminPanel() {
                           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ padding: '15px' }}>
-                            {format(parseISO(checkIn.checkInTime), 'HH:mm')}
+                          <td style={{ padding: '16px', fontSize: '0.875rem', fontWeight: '600' }}>
+                            {safeFormatDate(checkIn.checkInTime, 'HH:mm')}
                           </td>
-                          <td style={{ padding: '15px' }}>{checkIn.user.name}</td>
-                          <td style={{ padding: '15px' }}>{checkIn.user.email}</td>
+                          <td style={{ padding: '16px', fontSize: '0.875rem' }}>{checkIn.user?.name || 'N/A'}</td>
+                          <td style={{ padding: '16px', fontSize: '0.875rem', color: '#9ca3af' }}>{checkIn.user?.email || 'N/A'}</td>
                         </tr>
                       ))}
                   </tbody>
@@ -1013,29 +1157,33 @@ export default function AdminPanel() {
 
             {/* Weekly Check-ins Chart */}
             <div style={{
-              marginTop: '30px',
-              background: 'rgba(0, 0, 0, 0.6)',
+              marginTop: '32px',
+              background: 'rgba(0, 0, 0, 0.7)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '15px',
-              padding: '20px'
+              borderRadius: '16px',
+              padding: '24px',
+              backdropFilter: 'blur(10px)'
             }}>
-              <h3 style={{ marginBottom: '20px' }}>Nedeljne prijave</h3>
+              <h3 style={{ marginBottom: '20px', fontSize: '1.125rem', fontWeight: '600' }}>Nedeljne prijave</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={statistics?.weeklyCheckIns && Array.isArray(statistics.weeklyCheckIns) ? statistics.weeklyCheckIns.map((count, index) => ({
-                  day: ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'][new Date(subDays(new Date(), 6 - index)).getDay()],
-                  count
-                })) : []}>
+                <BarChart data={statistics?.weeklyCheckIns && Array.isArray(statistics.weeklyCheckIns) ?
+                  statistics.weeklyCheckIns.map((count, index) => ({
+                    day: ['Ned', 'Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub'][new Date(subDays(new Date(), 6 - index)).getDay()],
+                    count
+                  })) : []
+                }>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="day" stroke="#999" />
-                  <YAxis stroke="#999" />
+                  <XAxis dataKey="day" stroke="#9ca3af" />
+                  <YAxis stroke="#9ca3af" />
                   <Tooltip
                     contentStyle={{
                       background: 'rgba(0,0,0,0.9)',
                       border: '1px solid rgba(220,38,38,0.3)',
-                      borderRadius: '10px'
+                      borderRadius: '12px',
+                      padding: '12px'
                     }}
                   />
-                  <Bar dataKey="count" fill="#dc2626" />
+                  <Bar dataKey="count" fill="#dc2626" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1046,34 +1194,36 @@ export default function AdminPanel() {
           <div>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+              gridTemplateColumns: window.innerWidth > 768 ? 'repeat(2, 1fr)' : '1fr',
               gap: '20px'
             }}>
               {/* Members Growth */}
               <div style={{
-                background: 'rgba(0, 0, 0, 0.6)',
+                background: 'rgba(0, 0, 0, 0.7)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '15px',
-                padding: '20px'
+                borderRadius: '16px',
+                padding: '24px',
+                backdropFilter: 'blur(10px)'
               }}>
-                <h3 style={{ marginBottom: '20px' }}>Rast članstva</h3>
+                <h3 style={{ marginBottom: '20px', fontSize: '1.125rem', fontWeight: '600' }}>Rast članstva</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={statistics.revenueHistory}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                    <XAxis dataKey="month" stroke="#999" />
-                    <YAxis stroke="#999" />
+                    <XAxis dataKey="month" stroke="#9ca3af" />
+                    <YAxis stroke="#9ca3af" />
                     <Tooltip
                       contentStyle={{
                         background: 'rgba(0,0,0,0.9)',
                         border: '1px solid rgba(220,38,38,0.3)',
-                        borderRadius: '10px'
+                        borderRadius: '12px',
+                        padding: '12px'
                       }}
                     />
                     <Line
                       type="monotone"
                       dataKey="members"
                       stroke="#fbbf24"
-                      strokeWidth={2}
+                      strokeWidth={3}
                       dot={{ fill: '#fbbf24', r: 6 }}
                       activeDot={{ r: 8 }}
                     />
@@ -1083,43 +1233,44 @@ export default function AdminPanel() {
 
               {/* Quick Stats */}
               <div style={{
-                background: 'rgba(0, 0, 0, 0.6)',
+                background: 'rgba(0, 0, 0, 0.7)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '15px',
-                padding: '20px'
+                borderRadius: '16px',
+                padding: '24px',
+                backdropFilter: 'blur(10px)'
               }}>
-                <h3 style={{ marginBottom: '20px' }}>Brza statistika</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <h3 style={{ marginBottom: '20px', fontSize: '1.125rem', fontWeight: '600' }}>Brza statistika</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{
-                    padding: '15px',
+                    padding: '16px',
                     background: 'rgba(220, 38, 38, 0.1)',
-                    borderRadius: '10px',
+                    borderRadius: '12px',
                     border: '1px solid rgba(220, 38, 38, 0.3)'
                   }}>
-                    <div style={{ color: '#999', fontSize: '0.9rem' }}>Prosečna dnevna posećenost</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#dc2626' }}>
-                      {(statistics.weeklyCheckIns.reduce((a, b) => a + b, 0) / 7).toFixed(1)} korisnika
+                    <div style={{ color: '#9ca3af', fontSize: '0.875rem', fontWeight: '500' }}>Prosečna dnevna posećenost</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#dc2626', letterSpacing: '-0.025em' }}>
+                      {Array.isArray(statistics.weeklyCheckIns) ? (statistics.weeklyCheckIns.reduce((a, b) => a + b, 0) / 7).toFixed(1) : '0'} korisnika
                     </div>
                   </div>
                   <div style={{
-                    padding: '15px',
+                    padding: '16px',
                     background: 'rgba(16, 163, 74, 0.1)',
-                    borderRadius: '10px',
+                    borderRadius: '12px',
                     border: '1px solid rgba(16, 163, 74, 0.3)'
                   }}>
-                    <div style={{ color: '#999', fontSize: '0.9rem' }}>Stopa zadržavanja</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#16a34a' }}>
-                      {((statistics.activeMembers / statistics.totalUsers) * 100).toFixed(0)}%
+                    <div style={{ color: '#9ca3af', fontSize: '0.875rem', fontWeight: '500' }}>Stopa zadržavanja</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#16a34a', letterSpacing: '-0.025em' }}>
+                      {statistics.totalUsers > 0 ? ((statistics.activeMembers / statistics.totalUsers) * 100).toFixed(0) : '0'}%
                     </div>
                   </div>
                   <div style={{
-                    padding: '15px',
+                    padding: '16px',
                     background: 'rgba(251, 191, 36, 0.1)',
-                    borderRadius: '10px',
+                    borderRadius: '12px',
                     border: '1px solid rgba(251, 191, 36, 0.3)'
                   }}>
-                    <div style={{ color: '#999', fontSize: '0.9rem' }}>Prosečna vrednost člana</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fbbf24' }}>
+                    <div style={{ color: '#9ca3af', fontSize: '0.875rem', fontWeight: '500' }}>Prosečna vrednost člana</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#fbbf24', letterSpacing: '-0.025em' }}>
                       3,000 RSD/mesec
                     </div>
                   </div>
