@@ -82,7 +82,7 @@ export const privacyPolicyHTML = `<!DOCTYPE html>
         <h2>KBK Princip Aplikacija</h2>
 
         <div class="metadata">
-            <strong>Datum poslednje izmene:</strong> 18. septembar 2025<br>
+            <strong>Datum poslednje izmene:</strong> 22. septembar 2025<br>
             <strong>Verzija:</strong> 1.0
         </div>
 
@@ -91,8 +91,8 @@ export const privacyPolicyHTML = `<!DOCTYPE html>
 
         <h2>2. Vlasnik podataka i kontakt</h2>
         <div class="contact-box">
-            <strong>Email:</strong> support@kbkprincip.rs<br>
-            <strong>Adresa:</strong> [Biće dodato]
+            <strong>Developer:</strong> Borivoj Brankov<br>
+            <strong>Email:</strong> bbrankov997@gmail.com
         </div>
 
         <h2>3. Podaci koje prikupljamo</h2>
@@ -184,7 +184,7 @@ export const privacyPolicyHTML = `<!DOCTYPE html>
             <li><strong>Prenesete</strong> podatke drugom servisu</li>
             <li><strong>Prigovorite</strong> na obradu podataka</li>
         </ul>
-        <p>Za ostvarivanje ovih prava, kontaktirajte nas na: <strong>support@kbkprincip.rs</strong></p>
+        <p>Za ostvarivanje ovih prava, kontaktirajte nas na: <strong>bbrankov997@gmail.com</strong></p>
 
         <h2>10. Podatci o maloletnicima</h2>
         <p>Aplikacija nije namenjena osobama mlađim od 16 godina. Ne prikupljamo svesno podatke od maloletnika bez roditeljske saglasnosti.</p>
@@ -215,22 +215,11 @@ export const privacyPolicyHTML = `<!DOCTYPE html>
             <li>Obaveštenja na sajtu</li>
         </ul>
 
-        <h2>14. Pritužbe</h2>
-        <p>Ako niste zadovoljni načinom na koji obrađujemo vaše podatke, imate pravo da podnesete pritužbu:</p>
-        <div class="contact-box">
-            <strong>Povereniku za informacije od javnog značaja i zaštitu podataka o ličnosti</strong><br>
-            Bulevar kralja Aleksandra 15<br>
-            11000 Beograd, Srbija<br>
-            Email: office@poverenik.rs
-        </div>
-
-        <h2>15. Kontakt</h2>
+        <h2>14. Kontakt</h2>
         <div class="contact-box">
             <p>Za sva pitanja u vezi sa privatnošću, kontaktirajte nas:</p>
             <strong>Developer:</strong> Borivoj Brankov<br>
-            <strong>Email:</strong> bbrankov997@gmail.com<br>
-            <strong>Telefon:</strong> [Biće dodato]<br>
-            <strong>Adresa:</strong> [Biće dodato]
+            <strong>Email:</strong> bbrankov997@gmail.com
         </div>
 
         <hr style="margin: 40px 0; border: none; border-top: 1px solid #ddd;">
