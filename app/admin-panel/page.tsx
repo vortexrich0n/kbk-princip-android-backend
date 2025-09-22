@@ -434,8 +434,8 @@ export default function AdminPanel() {
                 cursor: 'pointer',
                 transition: 'transform 0.2s'
               }}
-              onMouseEnter={e => e.target.style.transform = 'translateY(-2px)'}
-              onMouseLeave={e => e.target.style.transform = 'translateY(0)'}
+              onMouseEnter={e => (e.target as HTMLButtonElement).style.transform = 'translateY(-2px)'}
+              onMouseLeave={e => (e.target as HTMLButtonElement).style.transform = 'translateY(0)'}
             >
               Prijavite se
             </button>
@@ -544,10 +544,10 @@ export default function AdminPanel() {
               transition: 'all 0.2s'
             }}
             onMouseEnter={e => {
-              e.target.style.background = 'rgba(255,0,0,0.2)';
+              (e.target as HTMLElement).style.background = 'rgba(255,0,0,0.2)';
             }}
             onMouseLeave={e => {
-              e.target.style.background = 'rgba(255,0,0,0.1)';
+              (e.target as HTMLElement).style.background = 'rgba(255,0,0,0.1)';
             }}
           >
             Odjavi se
@@ -902,10 +902,10 @@ export default function AdminPanel() {
                             transition: 'all 0.2s'
                           }}
                           onMouseEnter={e => {
-                            e.target.style.background = 'rgba(255,255,0,0.2)';
+                            (e.target as HTMLElement).style.background = 'rgba(255,255,0,0.2)';
                           }}
                           onMouseLeave={e => {
-                            e.target.style.background = 'rgba(255,255,0,0.1)';
+                            (e.target as HTMLElement).style.background = 'rgba(255,255,0,0.1)';
                           }}
                         >
                           {member.isActive ? 'Deaktiviraj' : 'Aktiviraj'}
@@ -923,10 +923,10 @@ export default function AdminPanel() {
                             transition: 'all 0.2s'
                           }}
                           onMouseEnter={e => {
-                            e.target.style.background = 'rgba(255,0,0,0.2)';
+                            (e.target as HTMLElement).style.background = 'rgba(255,0,0,0.2)';
                           }}
                           onMouseLeave={e => {
-                            e.target.style.background = 'rgba(255,0,0,0.1)';
+                            (e.target as HTMLElement).style.background = 'rgba(255,0,0,0.1)';
                           }}
                         >
                           Ukloni
@@ -1110,7 +1110,8 @@ export default function AdminPanel() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    label={({ name, value, percent }: any) => `${name}: ${value} (${((percent as number) * 100).toFixed(0)}%)`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
