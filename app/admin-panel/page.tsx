@@ -1,443 +1,457 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { format, subDays, startOfMonth } from 'date-fns';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isToday, differenceInDays } from 'date-fns';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  emailVerified: boolean;
+  membership?: {
+    id: string;
+    type: string;
+    active: boolean;
+    expiresAt?: string;
+    createdAt: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CheckIn {
+  id: string;
+  userId: string;
+  user: {
+    name: string;
+    email: string;
+  };
+  checkInTime: string;
+  createdAt: string;
+}
+
+interface Statistics {
+  totalUsers: number;
+  activeMembers: number;
+  expiredMembers: number;
+  todayCheckIns: number;
+  monthlyRevenue: number;
+  weeklyCheckIns: number[];
+  membershipDistribution: { name: string; value: number; percentage: number }[];
+  revenueHistory: { month: string; revenue: number; members: number }[];
+}
 
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [darkMode, setDarkMode] = useState(true);
   const [token, setToken] = useState('');
 
   // Data states
-  interface Member {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    isActive: boolean;
-    createdAt: string;
-  }
+  const [users, setUsers] = useState<User[]>([]);
+  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [statistics, setStatistics] = useState<Statistics | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDateRange, setSelectedDateRange] = useState('7d');
 
-  interface CheckIn {
-    id: string;
-    memberName: string;
-    memberEmail: string;
-    checkInTime: string;
-  }
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  interface RevenueData {
-    month: string;
-    revenue: number;
-    members: number;
-  }
-
-  const [todayCheckIns, setTodayCheckIns] = useState<CheckIn[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
-  const [monthlyStats, setMonthlyStats] = useState({
-    totalRevenue: 0,
-    activeMembers: 0,
-    newMembers: 0,
-    checkInsToday: 0
-  });
-
-  const calculateMonthlyRevenue = useCallback((members: Member[]) => {
-    const monthlyData = [];
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun'];
-
-    for (let i = 5; i >= 0; i--) {
-      const date = subDays(new Date(), i * 30);
-      const monthName = monthNames[5 - i];
-      const activeInMonth = members.filter(m =>
-        new Date(m.createdAt) <= date && m.isActive
-      ).length;
-      monthlyData.push({
-        month: monthName,
-        revenue: activeInMonth * 2500,
-        members: activeInMonth
-      });
-    }
-    return monthlyData;
-  }, []);
-
-  const calculateMonthlyStats = useCallback((members: Member[], checkIns: CheckIn[]) => {
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-
-    const activeMembers = members.filter(m => m.isActive).length;
-    const newThisMonth = members.filter(m =>
-      new Date(m.createdAt) >= monthStart
-    ).length;
-    const monthlyRevenue = activeMembers * 2500;
-
-    setMonthlyStats({
-      totalRevenue: monthlyRevenue,
-      activeMembers,
-      newMembers: newThisMonth,
-      checkInsToday: checkIns.length
-    });
-  }, []);
-
-  const setMockData = useCallback(() => {
-    // Mock data for demonstration
-    const mockMembers: Member[] = [
-      { id: '1', name: 'Marko Marković', email: 'marko@example.com', phone: '060/123-4567', isActive: true, createdAt: new Date(2024, 0, 15).toISOString() },
-      { id: '2', name: 'Ana Anić', email: 'ana@example.com', phone: '061/234-5678', isActive: true, createdAt: new Date(2024, 1, 20).toISOString() },
-      { id: '3', name: 'Petar Petrović', email: 'petar@example.com', phone: '062/345-6789', isActive: false, createdAt: new Date(2024, 2, 10).toISOString() },
-      { id: '4', name: 'Milica Milić', email: 'milica@example.com', phone: '063/456-7890', isActive: true, createdAt: new Date(2024, 3, 5).toISOString() },
-      { id: '5', name: 'Stefan Stefanović', email: 'stefan@example.com', phone: '064/567-8901', isActive: true, createdAt: new Date(2024, 4, 12).toISOString() },
-    ];
-    setMembers(mockMembers);
-
-    const mockCheckIns: CheckIn[] = [
-      { id: '1', memberName: 'Marko Marković', memberEmail: 'marko@example.com', checkInTime: new Date().toISOString() },
-      { id: '2', memberName: 'Ana Anić', memberEmail: 'ana@example.com', checkInTime: new Date(Date.now() - 3600000).toISOString() },
-      { id: '3', memberName: 'Milica Milić', memberEmail: 'milica@example.com', checkInTime: new Date(Date.now() - 7200000).toISOString() },
-    ];
-    setTodayCheckIns(mockCheckIns);
-
-    const mockRevenue = [
-      { month: 'Jan', revenue: 25000, members: 10 },
-      { month: 'Feb', revenue: 37500, members: 15 },
-      { month: 'Mar', revenue: 45000, members: 18 },
-      { month: 'Apr', revenue: 50000, members: 20 },
-      { month: 'Maj', revenue: 55000, members: 22 },
-      { month: 'Jun', revenue: 62500, members: 25 },
-    ];
-    setRevenueData(mockRevenue);
-
-    setMonthlyStats({
-      totalRevenue: 62500,
-      activeMembers: 25,
-      newMembers: 3,
-      checkInsToday: 3
-    });
-  }, []);
-
-  const fetchData = useCallback(async (authToken?: string) => {
-    const currentToken = authToken || token;
-    if (!currentToken) {
-      setMockData();
-      return;
-    }
-
-    try {
-      // Fetch users with admin auth
-      const usersRes = await fetch('/api/users', {
-        headers: {
-          'Authorization': `Bearer ${currentToken}`
-        }
-      });
-
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        const formattedMembers = usersData.map((user: Record<string, unknown>) => {
-          const membership = user.membership as Record<string, unknown> | undefined;
-          return {
-            id: user.id as string,
-            name: (user.name as string) || 'N/A',
-            email: user.email as string,
-            phone: (user.phone as string) || 'N/A',
-            isActive: membership?.active as boolean || false,
-            createdAt: user.createdAt as string
-          };
-        });
-        setMembers(formattedMembers);
-
-        // Calculate revenue data for charts
-        const revenueByMonth = calculateMonthlyRevenue(formattedMembers);
-        setRevenueData(revenueByMonth);
-
-      } else {
-        console.log('Users fetch failed, using mock data');
-        setMockData();
-        return;
-      }
-
-      // Fetch attendance/check-ins
-      const attendanceRes = await fetch('/api/attendance', {
-        headers: {
-          'Authorization': `Bearer ${currentToken}`
-        }
-      });
-
-      if (attendanceRes.ok) {
-        const attendanceData = await attendanceRes.json();
-        const today = new Date().toISOString().split('T')[0];
-        const todayAttendance = attendanceData
-          .filter((a: Record<string, unknown>) => (a.checkInTime as string).startsWith(today))
-          .map((a: Record<string, unknown>) => {
-            const user = a.user as Record<string, unknown> | undefined;
-            return {
-              id: a.id as string,
-              memberName: (user?.name as string) || 'N/A',
-              memberEmail: (user?.email as string) || 'N/A',
-              checkInTime: a.checkInTime as string
-            };
-          });
-        setTodayCheckIns(todayAttendance);
-      } else {
-        // Use mock data if no attendance data
-        setMockData();
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      // Use mock data for demo
-      setMockData();
-    }
-  }, [token, calculateMonthlyRevenue, setMockData]);
-
+  // Check for existing token
   useEffect(() => {
     const savedToken = localStorage.getItem('adminToken');
-    const savedUser = localStorage.getItem('adminUser');
-    if (savedToken && savedUser) {
-      const userData = JSON.parse(savedUser);
-      if (userData.role === 'ADMIN') {
-        setToken(savedToken);
-        setIsAuthenticated(true);
-        fetchData(savedToken);
-      }
+    if (savedToken) {
+      setToken(savedToken);
+      setIsAuthenticated(true);
+      fetchAllData(savedToken);
     }
-  }, [fetchData]);
-
-  // Calculate stats when data changes
-  useEffect(() => {
-    if (members.length > 0) {
-      calculateMonthlyStats(members, todayCheckIns);
-    }
-  }, [members, todayCheckIns, calculateMonthlyStats]);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     setLoginError('');
 
-    if (!email || !password) {
-      setLoginError('Molimo unesite email i lozinku');
-      return;
-    }
-
     try {
-      console.log('Attempting login with email:', email);
-
-      const res = await fetch('/api/login', {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
 
-      const data = await res.json();
-      console.log('Login response:', data);
+      if (response.ok) {
+        const data = await response.json();
 
-      if (res.ok && data.ok) {
-        // Check if user is admin (check both isAdmin flag and role)
-        console.log('User role:', data.user.role);
-        console.log('Is admin flag:', data.user.isAdmin);
-
-        // User needs to be admin - check role OR isAdmin flag
-        const isUserAdmin = data.user.role === 'ADMIN' || data.user.isAdmin === true;
-
-        if (!isUserAdmin) {
-          setLoginError(`Not an admin account. Role: ${data.user.role}, IsAdmin: ${data.user.isAdmin}`);
-          console.log('Not an admin - full user object:', data.user);
+        // Verify admin role
+        if (data.user?.role !== 'ADMIN') {
+          setLoginError('Pristup dozvoljen samo administratorima');
+          setIsLoading(false);
           return;
         }
 
-        console.log('Admin login successful');
         setToken(data.token);
-        setIsAuthenticated(true);
         localStorage.setItem('adminToken', data.token);
-        localStorage.setItem('adminUser', JSON.stringify(data.user));
-        fetchData(data.token);
+        setIsAuthenticated(true);
+        fetchAllData(data.token);
       } else {
-        // More detailed error messages
-        if (res.status === 403) {
-          // Email not verified - but for admin, we should bypass this
-          console.log('403 error - likely email verification issue');
-          setLoginError(data.error || 'Email verifikacija potrebna. Kontaktirajte administratora.');
-        } else if (res.status === 401) {
-          setLoginError('Pogrešna email adresa ili lozinka');
-        } else {
-          setLoginError(data.error || 'Greška pri prijavljivanju');
-        }
+        const error = await response.json();
+        setLoginError(error.message || 'Neuspešna prijava');
       }
     } catch (error) {
       console.error('Login error:', error);
-      setLoginError('Greška pri povezivanju sa serverom');
+      setLoginError('Greška prilikom povezivanja sa serverom');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    setToken('');
     localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
+    setToken('');
+    setIsAuthenticated(false);
+    setUsers([]);
+    setCheckIns([]);
+    setStatistics(null);
   };
 
-  const handleDeleteMember = async (memberId: string) => {
-    if (!confirm('Da li ste sigurni da želite da uklonite ovog člana?')) return;
+  const fetchAllData = async (authToken: string) => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchUsers(authToken),
+        fetchCheckIns(authToken),
+        fetchStatistics(authToken)
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const fetchUsers = async (authToken: string) => {
+    try {
+      const response = await fetch('/api/users', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchCheckIns = async (authToken: string) => {
+    try {
+      const response = await fetch('/api/checkins', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCheckIns(data);
+      }
+    } catch (error) {
+      console.error('Error fetching check-ins:', error);
+    }
+  };
+
+  const fetchStatistics = async (authToken: string) => {
+    try {
+      // Calculate statistics from users and check-ins data
+      const usersResponse = await fetch('/api/users', {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+
+      const checkInsResponse = await fetch('/api/checkins', {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+
+      if (usersResponse.ok && checkInsResponse.ok) {
+        const usersData: User[] = await usersResponse.json();
+        const checkInsData: CheckIn[] = await checkInsResponse.json();
+
+        // Calculate statistics
+        const totalUsers = usersData.length;
+        const activeMembers = usersData.filter(u => u.membership?.active).length;
+        const expiredMembers = usersData.filter(u =>
+          u.membership && !u.membership.active
+        ).length;
+
+        // Today's check-ins
+        const todayCheckIns = checkInsData.filter(c =>
+          isToday(parseISO(c.checkInTime))
+        ).length;
+
+        // Calculate monthly revenue (assuming 3000 RSD per active member)
+        const monthlyRevenue = activeMembers * 3000;
+
+        // Weekly check-ins for the last 7 days
+        const weeklyCheckIns: number[] = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = subDays(new Date(), i);
+          const count = checkInsData.filter(c => {
+            const checkInDate = parseISO(c.checkInTime);
+            return format(checkInDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+          }).length;
+          weeklyCheckIns.push(count);
+        }
+
+        // Membership distribution
+        const membershipTypes: { [key: string]: number } = {
+          'Aktivni': activeMembers,
+          'Istekli': expiredMembers,
+          'Bez članarine': totalUsers - activeMembers - expiredMembers
+        };
+
+        const membershipDistribution = Object.entries(membershipTypes).map(([name, value]) => ({
+          name,
+          value,
+          percentage: totalUsers > 0 ? (value / totalUsers) * 100 : 0
+        }));
+
+        // Revenue history (last 6 months)
+        const revenueHistory = [];
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Avg', 'Sep', 'Okt', 'Nov', 'Dec'];
+
+        for (let i = 5; i >= 0; i--) {
+          const date = subDays(new Date(), i * 30);
+          const monthIndex = date.getMonth();
+          const monthMembers = usersData.filter(u => {
+            const createdDate = parseISO(u.createdAt);
+            return createdDate <= date && u.membership?.active;
+          }).length;
+
+          revenueHistory.push({
+            month: monthNames[monthIndex],
+            revenue: monthMembers * 3000,
+            members: monthMembers
+          });
+        }
+
+        setStatistics({
+          totalUsers,
+          activeMembers,
+          expiredMembers,
+          todayCheckIns,
+          monthlyRevenue,
+          weeklyCheckIns,
+          membershipDistribution,
+          revenueHistory
+        });
+      }
+    } catch (error) {
+      console.error('Error calculating statistics:', error);
+    }
+  };
+
+  const toggleMembershipStatus = async (userId: string, currentStatus: boolean) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          membership: {
+            active: !currentStatus,
+            expiresAt: !currentStatus
+              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              : new Date().toISOString()
+          }
+        })
+      });
+
+      if (response.ok) {
+        fetchAllData(token);
+      }
+    } catch (error) {
+      console.error('Error updating membership:', error);
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    if (!confirm('Da li ste sigurni da želite obrisati ovog korisnika?')) return;
 
     try {
-      const res = await fetch(`/api/users/${memberId}`, {
+      const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (res.ok) {
-        fetchData();
-      } else {
-        // For demo, just remove from state
-        setMembers(members.filter(m => m.id !== memberId));
+      if (response.ok) {
+        fetchAllData(token);
       }
     } catch (error) {
-      console.error('Error deleting member:', error);
-      // For demo, just remove from state
-      setMembers(members.filter(m => m.id !== memberId));
+      console.error('Error deleting user:', error);
     }
   };
 
-  const handleToggleMemberStatus = async (memberId: string, currentStatus: boolean) => {
-    try {
-      const res = await fetch(`/api/users/${memberId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ membershipActive: !currentStatus })
-      });
+  // Filter users based on search
+  const filteredUsers = users.filter(user =>
+    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-      if (res.ok) {
-        fetchData();
-      } else {
-        // For demo, just update state
-        setMembers(members.map(m =>
-          m.id === memberId ? { ...m, isActive: !currentStatus } : m
-        ));
-      }
-    } catch (error) {
-      console.error('Error updating member:', error);
-      // For demo, just update state
-      setMembers(members.map(m =>
-        m.id === memberId ? { ...m, isActive: !currentStatus } : m
-      ));
-    }
+  // Pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+  // Chart colors
+  const COLORS = ['#dc2626', '#16a34a', '#6b7280'];
+  const CHART_COLORS = {
+    primary: '#dc2626',
+    secondary: '#fbbf24',
+    tertiary: '#16a34a',
+    background: 'rgba(220, 38, 38, 0.1)'
   };
 
   if (!isAuthenticated) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)',
+        background: 'linear-gradient(135deg, #000000 0%, #1a0000 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        padding: '20px'
       }}>
         <div style={{
-          background: 'rgba(20, 20, 20, 0.95)',
-          padding: '3rem',
+          background: 'rgba(0, 0, 0, 0.8)',
           borderRadius: '20px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          width: '100%',
+          padding: '40px',
           maxWidth: '400px',
-          backdropFilter: 'blur(10px)'
+          width: '100%',
+          border: '1px solid rgba(220, 38, 38, 0.3)',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
         }}>
-          <h1 style={{
-            color: '#fff',
-            fontSize: '2rem',
-            marginBottom: '0.5rem',
-            textAlign: 'center'
-          }}>Admin Panel</h1>
-          <p style={{
-            color: '#888',
-            textAlign: 'center',
-            marginBottom: '2rem'
-          }}>KBK Princip</p>
-
-          {/* Helper text for testing */}
-          <div style={{
-            background: 'rgba(255, 255, 0, 0.1)',
-            border: '1px solid rgba(255, 255, 0, 0.3)',
-            borderRadius: '8px',
-            padding: '0.75rem',
-            marginBottom: '1rem'
-          }}>
-            <p style={{
-              color: '#ffaa00',
-              fontSize: '0.85rem',
-              textAlign: 'center',
-              margin: 0
+          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+            <h1 style={{
+              color: '#fff',
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              marginBottom: '10px'
             }}>
-              Admin: principkbk@gmail.com
-            </p>
+              KBK PRINCIP
+            </h1>
+            <p style={{ color: '#999', fontSize: '1rem' }}>Admin Panel</p>
           </div>
 
+          {loginError && (
+            <div style={{
+              background: 'rgba(220, 38, 38, 0.1)',
+              border: '1px solid rgba(220, 38, 38, 0.3)',
+              borderRadius: '10px',
+              padding: '12px',
+              marginBottom: '20px',
+              color: '#ef4444',
+              fontSize: '0.9rem',
+              textAlign: 'center'
+            }}>
+              {loginError}
+            </div>
+          )}
+
           <form onSubmit={handleLogin}>
-            <input
-              type="email"
-              placeholder="Email adresa"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '1rem',
-                marginBottom: '1rem',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '10px',
-                color: '#fff',
-                fontSize: '1rem',
-                outline: 'none'
-              }}
-            />
-            <input
-              type="password"
-              placeholder="Lozinka"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '1rem',
-                marginBottom: '1.5rem',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '10px',
-                color: '#fff',
-                fontSize: '1rem',
-                outline: 'none'
-              }}
-            />
-            {loginError && (
-              <p style={{
-                color: '#ff4444',
-                marginBottom: '1rem',
-                textAlign: 'center'
-              }}>{loginError}</p>
-            )}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                color: '#ccc',
+                fontSize: '0.9rem',
+                marginBottom: '8px'
+              }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '10px',
+                  color: '#fff',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  transition: 'all 0.3s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+              />
+            </div>
+
+            <div style={{ marginBottom: '30px' }}>
+              <label style={{
+                display: 'block',
+                color: '#ccc',
+                fontSize: '0.9rem',
+                marginBottom: '8px'
+              }}>
+                Lozinka
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '10px',
+                  color: '#fff',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  transition: 'all 0.3s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+              />
+            </div>
+
             <button
               type="submit"
+              disabled={isLoading}
               style={{
                 width: '100%',
-                padding: '1rem',
-                background: 'linear-gradient(135deg, #ff0000, #cc0000)',
+                padding: '14px',
+                background: isLoading ? '#666' : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '10px',
                 fontSize: '1rem',
                 fontWeight: 'bold',
-                cursor: 'pointer',
-                transition: 'transform 0.2s'
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                transition: 'transform 0.2s',
+                opacity: isLoading ? 0.7 : 1
               }}
-              onMouseEnter={e => (e.target as HTMLButtonElement).style.transform = 'translateY(-2px)'}
-              onMouseLeave={e => (e.target as HTMLButtonElement).style.transform = 'translateY(0)'}
+              onMouseEnter={e => !isLoading && ((e.target as HTMLButtonElement).style.transform = 'translateY(-2px)')}
+              onMouseLeave={e => !isLoading && ((e.target as HTMLButtonElement).style.transform = 'translateY(0)')}
             >
-              Prijavite se
+              {isLoading ? 'Prijavljivanje...' : 'Prijavite se'}
             </button>
           </form>
         </div>
@@ -445,743 +459,626 @@ export default function AdminPanel() {
     );
   }
 
-  const COLORS = ['#00ff00', '#ff0000'];
-
   return (
     <div style={{
       minHeight: '100vh',
-      background: darkMode ? '#0a0a0a' : '#f5f5f5',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0000 100%)',
+      color: '#fff'
     }}>
-      <style jsx global>{`
-        ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-          background: ${darkMode ? '#111' : '#f1f1f1'};
-        }
-        ::-webkit-scrollbar-thumb {
-          background: ${darkMode ? '#333' : '#888'};
-          border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: ${darkMode ? '#555' : '#666'};
-        }
-      `}</style>
-
       {/* Header */}
-      <header style={{
-        background: darkMode ? '#111' : '#fff',
-        borderBottom: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-        padding: '1.5rem 2rem',
+      <div style={{
+        background: 'rgba(0, 0, 0, 0.9)',
+        borderBottom: '1px solid rgba(220, 38, 38, 0.3)',
+        padding: '20px 30px',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100
+        alignItems: 'center'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <h1 style={{
-            color: darkMode ? '#fff' : '#000',
-            fontSize: '1.5rem',
-            fontWeight: 'bold'
+            fontSize: '1.8rem',
+            fontWeight: 'bold',
+            background: 'linear-gradient(135deg, #dc2626 0%, #fbbf24 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
           }}>
-            <span style={{ color: '#ff0000' }}>KBK</span> Admin Panel
+            KBK PRINCIP Admin
           </h1>
-          <nav style={{ display: 'flex', gap: '1rem' }}>
-            {['dashboard', 'members', 'checkins', 'revenue'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: activeTab === tab ? 'rgba(255,0,0,0.1)' : 'transparent',
-                  color: activeTab === tab ? '#ff0000' : (darkMode ? '#888' : '#666'),
-                  border: `1px solid ${activeTab === tab ? '#ff0000' : 'transparent'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  textTransform: 'capitalize'
-                }}
-              >
-                {tab === 'dashboard' ? 'Pregled' :
-                 tab === 'members' ? 'Članovi' :
-                 tab === 'checkins' ? 'Prijave' : 'Prihodi'}
-              </button>
-            ))}
-          </nav>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <button
-            onClick={() => setDarkMode(!darkMode)}
+            onClick={() => fetchAllData(token)}
+            disabled={refreshing}
             style={{
-              width: '40px',
-              height: '40px',
+              padding: '8px 16px',
+              background: refreshing ? '#333' : 'rgba(220, 38, 38, 0.1)',
+              border: '1px solid rgba(220, 38, 38, 0.3)',
               borderRadius: '8px',
-              background: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+              color: refreshing ? '#666' : '#fff',
+              cursor: refreshing ? 'not-allowed' : 'pointer',
+              fontSize: '0.9rem',
+              transition: 'all 0.3s'
+            }}
+          >
+            {refreshing ? 'Osvežavanje...' : '🔄 Osveži'}
+          </button>
+        </div>
+
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: '10px 20px',
+            background: 'rgba(220, 38, 38, 0.1)',
+            border: '1px solid rgba(220, 38, 38, 0.3)',
+            borderRadius: '10px',
+            color: '#ef4444',
+            cursor: 'pointer',
+            fontSize: '0.95rem',
+            transition: 'all 0.3s'
+          }}
+          onMouseEnter={e => {
+            (e.target as HTMLElement).style.background = 'rgba(220, 38, 38, 0.2)';
+          }}
+          onMouseLeave={e => {
+            (e.target as HTMLElement).style.background = 'rgba(220, 38, 38, 0.1)';
+          }}
+        >
+          Odjavi se
+        </button>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div style={{
+        background: 'rgba(0, 0, 0, 0.5)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        padding: '0 30px',
+        display: 'flex',
+        gap: '10px'
+      }}>
+        {['dashboard', 'users', 'checkins', 'statistics'].map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '15px 25px',
+              background: activeTab === tab ? 'rgba(220, 38, 38, 0.2)' : 'transparent',
               border: 'none',
+              borderBottom: activeTab === tab ? '2px solid #dc2626' : '2px solid transparent',
+              color: activeTab === tab ? '#fff' : '#999',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.2rem',
-              transition: 'all 0.2s'
+              fontSize: '0.95rem',
+              fontWeight: activeTab === tab ? 'bold' : 'normal',
+              transition: 'all 0.3s',
+              textTransform: 'capitalize'
             }}
           >
-            {darkMode ? '☀️' : '🌙'}
+            {tab === 'dashboard' ? 'Kontrolna tabla' :
+             tab === 'users' ? 'Korisnici' :
+             tab === 'checkins' ? 'Prijave' :
+             'Statistika'}
           </button>
-          <button
-            onClick={handleLogout}
-            style={{
-              padding: '0.5rem 1rem',
-              background: 'rgba(255,0,0,0.1)',
-              color: '#ff0000',
-              border: '1px solid #ff0000',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => {
-              (e.target as HTMLElement).style.background = 'rgba(255,0,0,0.2)';
-            }}
-            onMouseLeave={e => {
-              (e.target as HTMLElement).style.background = 'rgba(255,0,0,0.1)';
-            }}
-          >
-            Odjavi se
-          </button>
-        </div>
-      </header>
+        ))}
+      </div>
 
-      {/* Dashboard */}
-      {activeTab === 'dashboard' && (
-        <div style={{ padding: '2rem' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '1.5rem',
-            marginBottom: '3rem'
-          }}>
+      {/* Content */}
+      <div style={{ padding: '30px' }}>
+        {activeTab === 'dashboard' && statistics && (
+          <div>
+            {/* Stats Cards */}
             <div style={{
-              background: darkMode ? '#111' : '#fff',
-              padding: '1.5rem',
-              borderRadius: '16px',
-              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-              transition: 'all 0.3s',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 10px 30px rgba(255,0,0,0.2)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '20px',
+              marginBottom: '30px'
             }}>
-              <h3 style={{ color: '#888', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                Mesečni prihod
-              </h3>
-              <p style={{
-                color: darkMode ? '#fff' : '#000',
-                fontSize: '2rem',
-                fontWeight: 'bold'
-              }}>
-                {monthlyStats.totalRevenue.toLocaleString()} RSD
-              </p>
-              <p style={{
-                color: '#00ff00',
-                fontSize: '0.85rem',
-                marginTop: '0.5rem'
-              }}>
-                +12% od prošlog meseca
-              </p>
-            </div>
-
-            <div style={{
-              background: darkMode ? '#111' : '#fff',
-              padding: '1.5rem',
-              borderRadius: '16px',
-              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-              transition: 'all 0.3s',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 10px 30px rgba(255,0,0,0.2)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}>
-              <h3 style={{ color: '#888', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                Aktivni članovi
-              </h3>
-              <p style={{
-                color: darkMode ? '#fff' : '#000',
-                fontSize: '2rem',
-                fontWeight: 'bold'
-              }}>
-                {monthlyStats.activeMembers}
-              </p>
-              <p style={{
-                color: '#00ff00',
-                fontSize: '0.85rem',
-                marginTop: '0.5rem'
-              }}>
-                {members.filter(m => m.isActive).length} / {members.length} ukupno
-              </p>
-            </div>
-
-            <div style={{
-              background: darkMode ? '#111' : '#fff',
-              padding: '1.5rem',
-              borderRadius: '16px',
-              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-              transition: 'all 0.3s',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 10px 30px rgba(255,0,0,0.2)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}>
-              <h3 style={{ color: '#888', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                Novi članovi ovaj mesec
-              </h3>
-              <p style={{
-                color: darkMode ? '#fff' : '#000',
-                fontSize: '2rem',
-                fontWeight: 'bold'
-              }}>
-                {monthlyStats.newMembers}
-              </p>
-              <p style={{
-                color: '#ffaa00',
-                fontSize: '0.85rem',
-                marginTop: '0.5rem'
-              }}>
-                Cilj: 5 novih članova
-              </p>
-            </div>
-
-            <div style={{
-              background: darkMode ? '#111' : '#fff',
-              padding: '1.5rem',
-              borderRadius: '16px',
-              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-              transition: 'all 0.3s',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 10px 30px rgba(255,0,0,0.2)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}>
-              <h3 style={{ color: '#888', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                Prijave danas
-              </h3>
-              <p style={{
-                color: darkMode ? '#fff' : '#000',
-                fontSize: '2rem',
-                fontWeight: 'bold'
-              }}>
-                {monthlyStats.checkInsToday}
-              </p>
-              <p style={{
-                color: '#00ff00',
-                fontSize: '0.85rem',
-                marginTop: '0.5rem'
-              }}>
-                Aktivno sada: 2
-              </p>
-            </div>
-          </div>
-
-          {/* Revenue Chart */}
-          <div style={{
-            background: darkMode ? '#111' : '#fff',
-            padding: '2rem',
-            borderRadius: '16px',
-            border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-            marginBottom: '2rem'
-          }}>
-            <h2 style={{
-              color: darkMode ? '#fff' : '#000',
-              fontSize: '1.2rem',
-              marginBottom: '1.5rem'
-            }}>
-              Prihodi po mesecima
-            </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#333' : '#eee'} />
-                <XAxis dataKey="month" stroke={darkMode ? '#888' : '#666'} />
-                <YAxis stroke={darkMode ? '#888' : '#666'} />
-                <Tooltip
-                  contentStyle={{
-                    background: darkMode ? '#222' : '#fff',
-                    border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-                    borderRadius: '8px'
+              {[
+                { label: 'Ukupno korisnika', value: statistics.totalUsers, icon: '👥', color: '#3b82f6' },
+                { label: 'Aktivni članovi', value: statistics.activeMembers, icon: '✅', color: '#16a34a' },
+                { label: 'Danas prijavaljeni', value: statistics.todayCheckIns, icon: '📍', color: '#fbbf24' },
+                { label: 'Mesečni prihod', value: `${statistics.monthlyRevenue.toLocaleString()} RSD`, icon: '💰', color: '#dc2626' }
+              ].map((stat, index) => (
+                <div
+                  key={index}
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.6)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '15px',
+                    padding: '25px',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    transition: 'transform 0.3s',
+                    cursor: 'pointer'
                   }}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#ff0000"
-                  name="Prihod (RSD)"
-                  strokeWidth={2}
-                  dot={{ fill: '#ff0000', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="members"
-                  stroke="#00ff00"
-                  name="Broj članova"
-                  strokeWidth={2}
-                  dot={{ fill: '#00ff00', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+                  onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-5px)')}
+                  onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
+                >
+                  <div style={{
+                    position: 'absolute',
+                    top: '-20px',
+                    right: '-20px',
+                    fontSize: '80px',
+                    opacity: 0.1
+                  }}>
+                    {stat.icon}
+                  </div>
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    <p style={{ color: '#999', fontSize: '0.9rem', marginBottom: '8px' }}>
+                      {stat.label}
+                    </p>
+                    <p style={{
+                      fontSize: '2rem',
+                      fontWeight: 'bold',
+                      color: stat.color,
+                      margin: 0
+                    }}>
+                      {stat.value}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-      {/* Members Tab */}
-      {activeTab === 'members' && (
-        <div style={{ padding: '2rem' }}>
-          <div style={{
-            background: darkMode ? '#111' : '#fff',
-            borderRadius: '16px',
-            border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-            overflow: 'hidden'
-          }}>
+            {/* Charts Grid */}
             <div style={{
-              padding: '1.5rem',
-              borderBottom: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+              gap: '20px'
+            }}>
+              {/* Revenue Chart */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '15px',
+                padding: '20px'
+              }}>
+                <h3 style={{ marginBottom: '20px', color: '#fff' }}>Prihodi po mesecima</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={statistics.revenueHistory}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#dc2626" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis dataKey="month" stroke="#999" />
+                    <YAxis stroke="#999" />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'rgba(0,0,0,0.9)',
+                        border: '1px solid rgba(220,38,38,0.3)',
+                        borderRadius: '10px'
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#dc2626"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorRevenue)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Membership Distribution */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '15px',
+                padding: '20px'
+              }}>
+                <h3 style={{ marginBottom: '20px', color: '#fff' }}>Distribucija članstva</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={statistics.membershipDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      label={({ name, percentage }: any) => `${name}: ${percentage.toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {statistics.membershipDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        background: 'rgba(0,0,0,0.9)',
+                        border: '1px solid rgba(220,38,38,0.3)',
+                        borderRadius: '10px'
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'users' && (
+          <div>
+            {/* Search and filters */}
+            <div style={{
+              marginBottom: '20px',
               display: 'flex',
-              justifyContent: 'space-between',
+              gap: '20px',
               alignItems: 'center'
             }}>
-              <h2 style={{
-                color: darkMode ? '#fff' : '#000',
-                fontSize: '1.2rem'
-              }}>
-                Svi članovi ({members.length})
-              </h2>
-              <button
+              <input
+                type="text"
+                placeholder="Pretraži korisnike..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  padding: '0.5rem 1rem',
-                  background: 'linear-gradient(135deg, #ff0000, #cc0000)',
+                  flex: 1,
+                  padding: '12px 20px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '10px',
                   color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
+                  fontSize: '1rem',
+                  outline: 'none'
                 }}
-              >
-                + Dodaj člana
-              </button>
+              />
+              <div style={{ color: '#999' }}>
+                Ukupno: {filteredUsers.length} korisnika
+              </div>
             </div>
-            <div style={{ overflowX: 'auto' }}>
+
+            {/* Users Table */}
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.6)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '15px',
+              overflow: 'hidden'
+            }}>
               <table style={{
                 width: '100%',
                 borderCollapse: 'collapse'
               }}>
                 <thead>
                   <tr style={{
-                    background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
+                    background: 'rgba(220, 38, 38, 0.1)',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
                   }}>
-                    <th style={{
-                      padding: '1rem',
-                      textAlign: 'left',
-                      color: '#888',
-                      fontWeight: 'normal'
-                    }}>Ime</th>
-                    <th style={{
-                      padding: '1rem',
-                      textAlign: 'left',
-                      color: '#888',
-                      fontWeight: 'normal'
-                    }}>Email</th>
-                    <th style={{
-                      padding: '1rem',
-                      textAlign: 'left',
-                      color: '#888',
-                      fontWeight: 'normal'
-                    }}>Telefon</th>
-                    <th style={{
-                      padding: '1rem',
-                      textAlign: 'left',
-                      color: '#888',
-                      fontWeight: 'normal'
-                    }}>Status</th>
-                    <th style={{
-                      padding: '1rem',
-                      textAlign: 'left',
-                      color: '#888',
-                      fontWeight: 'normal'
-                    }}>Član od</th>
-                    <th style={{
-                      padding: '1rem',
-                      textAlign: 'center',
-                      color: '#888',
-                      fontWeight: 'normal'
-                    }}>Akcije</th>
+                    <th style={{ padding: '15px', textAlign: 'left' }}>Ime</th>
+                    <th style={{ padding: '15px', textAlign: 'left' }}>Email</th>
+                    <th style={{ padding: '15px', textAlign: 'left' }}>Telefon</th>
+                    <th style={{ padding: '15px', textAlign: 'left' }}>Status</th>
+                    <th style={{ padding: '15px', textAlign: 'left' }}>Članarina</th>
+                    <th style={{ padding: '15px', textAlign: 'center' }}>Akcije</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {members.map((member) => (
-                    <tr key={member.id} style={{
-                      borderTop: `1px solid ${darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}>
-                      <td style={{
-                        padding: '1rem',
-                        color: darkMode ? '#fff' : '#000',
-                        fontWeight: '500'
-                      }}>{member.name}</td>
-                      <td style={{
-                        padding: '1rem',
-                        color: darkMode ? '#ccc' : '#333'
-                      }}>{member.email}</td>
-                      <td style={{
-                        padding: '1rem',
-                        color: darkMode ? '#ccc' : '#333'
-                      }}>{member.phone}</td>
-                      <td style={{ padding: '1rem' }}>
+                  {currentUsers.map((user) => (
+                    <tr
+                      key={user.id}
+                      style={{
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                        transition: 'background 0.3s'
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td style={{ padding: '15px' }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold' }}>{user.name || 'N/A'}</div>
+                          <div style={{ fontSize: '0.85rem', color: '#999' }}>
+                            {user.role === 'ADMIN' ? '👑 Admin' : '👤 Korisnik'}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '15px' }}>
+                        <div>
+                          {user.email}
+                          {user.emailVerified && (
+                            <span style={{ color: '#16a34a', marginLeft: '5px' }}>✓</span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '15px' }}>{user.phone || 'N/A'}</td>
+                      <td style={{ padding: '15px' }}>
                         <span style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '12px',
+                          padding: '5px 10px',
+                          borderRadius: '20px',
                           fontSize: '0.85rem',
-                          background: member.isActive ? 'rgba(0,255,0,0.1)' : 'rgba(255,0,0,0.1)',
-                          color: member.isActive ? '#00ff00' : '#ff0000',
-                          border: `1px solid ${member.isActive ? '#00ff00' : '#ff0000'}`
+                          background: user.membership?.active
+                            ? 'rgba(16, 163, 74, 0.2)'
+                            : 'rgba(239, 68, 68, 0.2)',
+                          color: user.membership?.active ? '#16a34a' : '#ef4444',
+                          border: `1px solid ${user.membership?.active ? '#16a34a' : '#ef4444'}`
                         }}>
-                          {member.isActive ? 'Aktivan' : 'Neaktivan'}
+                          {user.membership?.active ? 'Aktivan' : 'Neaktivan'}
                         </span>
                       </td>
-                      <td style={{
-                        padding: '1rem',
-                        color: darkMode ? '#ccc' : '#333'
-                      }}>
-                        {new Date(member.createdAt).toLocaleDateString('sr-RS')}
+                      <td style={{ padding: '15px' }}>
+                        {user.membership?.expiresAt ? (
+                          <div>
+                            <div>Ističe: {format(parseISO(user.membership.expiresAt), 'dd.MM.yyyy')}</div>
+                            <div style={{ fontSize: '0.85rem', color: '#999' }}>
+                              {differenceInDays(parseISO(user.membership.expiresAt), new Date())} dana
+                            </div>
+                          </div>
+                        ) : (
+                          'Nema članarine'
+                        )}
                       </td>
-                      <td style={{
-                        padding: '1rem',
-                        display: 'flex',
-                        gap: '0.5rem',
-                        justifyContent: 'center'
-                      }}>
-                        <button
-                          onClick={() => handleToggleMemberStatus(member.id, member.isActive)}
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            background: 'rgba(255,255,0,0.1)',
-                            color: '#ffff00',
-                            border: '1px solid #ffff00',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={e => {
-                            (e.target as HTMLElement).style.background = 'rgba(255,255,0,0.2)';
-                          }}
-                          onMouseLeave={e => {
-                            (e.target as HTMLElement).style.background = 'rgba(255,255,0,0.1)';
-                          }}
-                        >
-                          {member.isActive ? 'Deaktiviraj' : 'Aktiviraj'}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteMember(member.id)}
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            background: 'rgba(255,0,0,0.1)',
-                            color: '#ff0000',
-                            border: '1px solid #ff0000',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={e => {
-                            (e.target as HTMLElement).style.background = 'rgba(255,0,0,0.2)';
-                          }}
-                          onMouseLeave={e => {
-                            (e.target as HTMLElement).style.background = 'rgba(255,0,0,0.1)';
-                          }}
-                        >
-                          Ukloni
-                        </button>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                          <button
+                            onClick={() => toggleMembershipStatus(user.id, user.membership?.active || false)}
+                            style={{
+                              padding: '6px 12px',
+                              background: 'rgba(251, 191, 36, 0.1)',
+                              border: '1px solid rgba(251, 191, 36, 0.3)',
+                              borderRadius: '6px',
+                              color: '#fbbf24',
+                              cursor: 'pointer',
+                              fontSize: '0.85rem'
+                            }}
+                            onMouseEnter={e => {
+                              (e.target as HTMLElement).style.background = 'rgba(251, 191, 36, 0.2)';
+                            }}
+                            onMouseLeave={e => {
+                              (e.target as HTMLElement).style.background = 'rgba(251, 191, 36, 0.1)';
+                            }}
+                          >
+                            {user.membership?.active ? 'Deaktiviraj' : 'Aktiviraj'}
+                          </button>
+                          {user.role !== 'ADMIN' && (
+                            <button
+                              onClick={() => deleteUser(user.id)}
+                              style={{
+                                padding: '6px 12px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: '6px',
+                                color: '#ef4444',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem'
+                              }}
+                              onMouseEnter={e => {
+                                (e.target as HTMLElement).style.background = 'rgba(239, 68, 68, 0.2)';
+                              }}
+                              onMouseLeave={e => {
+                                (e.target as HTMLElement).style.background = 'rgba(239, 68, 68, 0.1)';
+                              }}
+                            >
+                              Obriši
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Check-ins Tab */}
-      {activeTab === 'checkins' && (
-        <div style={{ padding: '2rem' }}>
-          <div style={{
-            background: darkMode ? '#111' : '#fff',
-            borderRadius: '16px',
-            border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              padding: '1.5rem',
-              borderBottom: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
-            }}>
-              <h2 style={{
-                color: darkMode ? '#fff' : '#000',
-                fontSize: '1.2rem'
-              }}>
-                Današnje prijave ({todayCheckIns.length})
-              </h2>
-              <p style={{
-                color: '#888',
-                marginTop: '0.5rem'
-              }}>
-                {format(new Date(), 'dd.MM.yyyy')}
-              </p>
-            </div>
-            <div style={{ padding: '1.5rem' }}>
-              {todayCheckIns.length === 0 ? (
-                <p style={{ color: '#888', textAlign: 'center', padding: '2rem' }}>
-                  Nema prijava za danas
-                </p>
-              ) : (
+              {/* Pagination */}
+              {totalPages > 1 && (
                 <div style={{
-                  display: 'grid',
-                  gap: '1rem'
+                  padding: '20px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '10px'
                 }}>
-                  {todayCheckIns.map((checkIn) => (
-                    <div key={checkIn.id} style={{
-                      padding: '1rem',
-                      background: darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    style={{
+                      padding: '8px 15px',
+                      background: currentPage === 1 ? '#333' : 'rgba(220, 38, 38, 0.1)',
+                      border: '1px solid rgba(220, 38, 38, 0.3)',
                       borderRadius: '8px',
-                      border: `1px solid ${darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      transition: 'all 0.2s'
+                      color: currentPage === 1 ? '#666' : '#fff',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
                     }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateX(4px)';
-                      e.currentTarget.style.borderColor = '#ff0000';
+                  >
+                    Prethodna
+                  </button>
+                  <span style={{ padding: '8px 15px', color: '#999' }}>
+                    Strana {currentPage} od {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    style={{
+                      padding: '8px 15px',
+                      background: currentPage === totalPages ? '#333' : 'rgba(220, 38, 38, 0.1)',
+                      border: '1px solid rgba(220, 38, 38, 0.3)',
+                      borderRadius: '8px',
+                      color: currentPage === totalPages ? '#666' : '#fff',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
                     }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateX(0)';
-                      e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #ff0000, #cc0000)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#fff',
-                          fontWeight: 'bold'
-                        }}>
-                          {checkIn.memberName.split(' ').map(n => n[0]).join('')}
-                        </div>
-                        <div>
-                          <p style={{
-                            color: darkMode ? '#fff' : '#000',
-                            fontWeight: '500'
-                          }}>{checkIn.memberName}</p>
-                          <p style={{
-                            color: '#888',
-                            fontSize: '0.9rem',
-                            marginTop: '0.25rem'
-                          }}>{checkIn.memberEmail}</p>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{
-                          color: '#00ff00',
-                          fontSize: '0.9rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem'
-                        }}>
-                          <span style={{ fontSize: '1.2rem' }}>✓</span> Prijavljen
-                        </p>
-                        <p style={{
-                          color: '#888',
-                          fontSize: '0.85rem',
-                          marginTop: '0.25rem'
-                        }}>{format(new Date(checkIn.checkInTime), 'HH:mm')}</p>
-                      </div>
-                    </div>
-                  ))}
+                  >
+                    Sledeća
+                  </button>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Revenue Tab */}
-      {activeTab === 'revenue' && (
-        <div style={{ padding: '2rem' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
-            gap: '2rem'
-          }}>
-            {/* Monthly Revenue Bar Chart */}
+        {activeTab === 'checkins' && (
+          <div>
+            <h2 style={{ marginBottom: '20px' }}>Današnje prijave</h2>
             <div style={{
-              background: darkMode ? '#111' : '#fff',
-              padding: '2rem',
-              borderRadius: '16px',
-              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
+              background: 'rgba(0, 0, 0, 0.6)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '15px',
+              overflow: 'hidden'
             }}>
-              <h2 style={{
-                color: darkMode ? '#fff' : '#000',
-                fontSize: '1.2rem',
-                marginBottom: '1.5rem'
-              }}>
-                Mesečni prihodi
-              </h2>
+              {checkIns.filter(c => isToday(parseISO(c.checkInTime))).length === 0 ? (
+                <div style={{
+                  padding: '40px',
+                  textAlign: 'center',
+                  color: '#999'
+                }}>
+                  Nema prijava za danas
+                </div>
+              ) : (
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse'
+                }}>
+                  <thead>
+                    <tr style={{
+                      background: 'rgba(220, 38, 38, 0.1)',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}>
+                      <th style={{ padding: '15px', textAlign: 'left' }}>Vreme</th>
+                      <th style={{ padding: '15px', textAlign: 'left' }}>Ime</th>
+                      <th style={{ padding: '15px', textAlign: 'left' }}>Email</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {checkIns
+                      .filter(c => isToday(parseISO(c.checkInTime)))
+                      .sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime())
+                      .map((checkIn) => (
+                        <tr
+                          key={checkIn.id}
+                          style={{
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                            transition: 'background 0.3s'
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <td style={{ padding: '15px' }}>
+                            {format(parseISO(checkIn.checkInTime), 'HH:mm')}
+                          </td>
+                          <td style={{ padding: '15px' }}>{checkIn.user.name}</td>
+                          <td style={{ padding: '15px' }}>{checkIn.user.email}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Weekly Check-ins Chart */}
+            <div style={{
+              marginTop: '30px',
+              background: 'rgba(0, 0, 0, 0.6)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '15px',
+              padding: '20px'
+            }}>
+              <h3 style={{ marginBottom: '20px' }}>Nedeljne prijave</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#333' : '#eee'} />
-                  <XAxis dataKey="month" stroke={darkMode ? '#888' : '#666'} />
-                  <YAxis stroke={darkMode ? '#888' : '#666'} />
+                <BarChart data={statistics?.weeklyCheckIns.map((count, index) => ({
+                  day: ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'][new Date(subDays(new Date(), 6 - index)).getDay()],
+                  count
+                }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="day" stroke="#999" />
+                  <YAxis stroke="#999" />
                   <Tooltip
                     contentStyle={{
-                      background: darkMode ? '#222' : '#fff',
-                      border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-                      borderRadius: '8px'
+                      background: 'rgba(0,0,0,0.9)',
+                      border: '1px solid rgba(220,38,38,0.3)',
+                      borderRadius: '10px'
                     }}
                   />
-                  <Bar dataKey="revenue" fill="#ff0000" name="Prihod (RSD)" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="count" fill="#dc2626" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-
-            {/* Member Status Pie Chart */}
-            <div style={{
-              background: darkMode ? '#111' : '#fff',
-              padding: '2rem',
-              borderRadius: '16px',
-              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
-            }}>
-              <h2 style={{
-                color: darkMode ? '#fff' : '#000',
-                fontSize: '1.2rem',
-                marginBottom: '1.5rem'
-              }}>
-                Status članova
-              </h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Aktivni', value: members.filter(m => m.isActive).length },
-                      { name: 'Neaktivni', value: members.filter(m => !m.isActive).length }
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    label={({ name, value, percent }: any) => `${name}: ${value} (${((percent as number) * 100).toFixed(0)}%)`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {[0, 1].map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
           </div>
+        )}
 
-          {/* Revenue Summary */}
-          <div style={{
-            background: darkMode ? '#111' : '#fff',
-            padding: '2rem',
-            borderRadius: '16px',
-            border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-            marginTop: '2rem'
-          }}>
-            <h2 style={{
-              color: darkMode ? '#fff' : '#000',
-              fontSize: '1.2rem',
-              marginBottom: '1.5rem'
-            }}>
-              Finansijski pregled
-            </h2>
+        {activeTab === 'statistics' && statistics && (
+          <div>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '2rem'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+              gap: '20px'
             }}>
-              <div>
-                <p style={{ color: '#888', marginBottom: '0.5rem' }}>Cena članarine</p>
-                <p style={{
-                  color: darkMode ? '#fff' : '#000',
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold'
-                }}>2,500 RSD</p>
+              {/* Members Growth */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '15px',
+                padding: '20px'
+              }}>
+                <h3 style={{ marginBottom: '20px' }}>Rast članstva</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={statistics.revenueHistory}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis dataKey="month" stroke="#999" />
+                    <YAxis stroke="#999" />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'rgba(0,0,0,0.9)',
+                        border: '1px solid rgba(220,38,38,0.3)',
+                        borderRadius: '10px'
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="members"
+                      stroke="#fbbf24"
+                      strokeWidth={2}
+                      dot={{ fill: '#fbbf24', r: 6 }}
+                      activeDot={{ r: 8 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
-              <div>
-                <p style={{ color: '#888', marginBottom: '0.5rem' }}>Mesečni prihod</p>
-                <p style={{
-                  color: darkMode ? '#fff' : '#000',
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold'
-                }}>{(monthlyStats.activeMembers * 2500).toLocaleString()} RSD</p>
-              </div>
-              <div>
-                <p style={{ color: '#888', marginBottom: '0.5rem' }}>Godišnja projekcija</p>
-                <p style={{
-                  color: darkMode ? '#fff' : '#000',
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold'
-                }}>{(monthlyStats.activeMembers * 2500 * 12).toLocaleString()} RSD</p>
-              </div>
-              <div>
-                <p style={{ color: '#888', marginBottom: '0.5rem' }}>Prosečna posećenost</p>
-                <p style={{
-                  color: darkMode ? '#fff' : '#000',
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold'
-                }}>78%</p>
+
+              {/* Quick Stats */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '15px',
+                padding: '20px'
+              }}>
+                <h3 style={{ marginBottom: '20px' }}>Brza statistika</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  <div style={{
+                    padding: '15px',
+                    background: 'rgba(220, 38, 38, 0.1)',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(220, 38, 38, 0.3)'
+                  }}>
+                    <div style={{ color: '#999', fontSize: '0.9rem' }}>Prosečna dnevna posećenost</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#dc2626' }}>
+                      {(statistics.weeklyCheckIns.reduce((a, b) => a + b, 0) / 7).toFixed(1)} korisnika
+                    </div>
+                  </div>
+                  <div style={{
+                    padding: '15px',
+                    background: 'rgba(16, 163, 74, 0.1)',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(16, 163, 74, 0.3)'
+                  }}>
+                    <div style={{ color: '#999', fontSize: '0.9rem' }}>Stopa zadržavanja</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#16a34a' }}>
+                      {((statistics.activeMembers / statistics.totalUsers) * 100).toFixed(0)}%
+                    </div>
+                  </div>
+                  <div style={{
+                    padding: '15px',
+                    background: 'rgba(251, 191, 36, 0.1)',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(251, 191, 36, 0.3)'
+                  }}>
+                    <div style={{ color: '#999', fontSize: '0.9rem' }}>Prosečna vrednost člana</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fbbf24' }}>
+                      3,000 RSD/mesec
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
