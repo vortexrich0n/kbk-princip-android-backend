@@ -146,10 +146,17 @@ export default function AdminPanel() {
 
       if (response.ok) {
         const data = await response.json();
-        setUsers(data);
+        // Ensure data is an array
+        const usersArray = Array.isArray(data) ? data :
+                          (data?.users ? data.users : []);
+        setUsers(usersArray);
+      } else {
+        console.error('Failed to fetch users:', response.status);
+        setUsers([]);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      setUsers([]);
     }
   };
 
@@ -163,10 +170,17 @@ export default function AdminPanel() {
 
       if (response.ok) {
         const data = await response.json();
-        setCheckIns(data);
+        // Ensure data is an array
+        const checkInsArray = Array.isArray(data) ? data :
+                             (data?.checkIns ? data.checkIns : []);
+        setCheckIns(checkInsArray);
+      } else {
+        console.error('Failed to fetch check-ins:', response.status);
+        setCheckIns([]);
       }
     } catch (error) {
       console.error('Error fetching check-ins:', error);
+      setCheckIns([]);
     }
   };
 
@@ -182,8 +196,30 @@ export default function AdminPanel() {
       });
 
       if (usersResponse.ok && checkInsResponse.ok) {
-        const usersData: User[] = await usersResponse.json();
-        const checkInsData: CheckIn[] = await checkInsResponse.json();
+        const usersRawData = await usersResponse.json();
+        const checkInsRawData = await checkInsResponse.json();
+
+        // Ensure data is arrays
+        const usersData: User[] = Array.isArray(usersRawData) ? usersRawData :
+                                  (usersRawData?.users ? usersRawData.users : []);
+        const checkInsData: CheckIn[] = Array.isArray(checkInsRawData) ? checkInsRawData :
+                                        (checkInsRawData?.checkIns ? checkInsRawData.checkIns : []);
+
+        // Validate arrays before using
+        if (!Array.isArray(usersData) || !Array.isArray(checkInsData)) {
+          console.error('Invalid data format received from API');
+          setStatistics({
+            totalUsers: 0,
+            activeMembers: 0,
+            expiredMembers: 0,
+            todayCheckIns: 0,
+            monthlyRevenue: 0,
+            weeklyCheckIns: [0, 0, 0, 0, 0, 0, 0],
+            membershipDistribution: [],
+            revenueHistory: []
+          });
+          return;
+        }
 
         // Calculate statistics
         const totalUsers = usersData.length;
@@ -193,9 +229,13 @@ export default function AdminPanel() {
         ).length;
 
         // Today's check-ins
-        const todayCheckIns = checkInsData.filter(c =>
-          isToday(parseISO(c.checkInTime))
-        ).length;
+        const todayCheckIns = checkInsData.filter(c => {
+          try {
+            return c.checkInTime && isToday(parseISO(c.checkInTime));
+          } catch {
+            return false;
+          }
+        }).length;
 
         // Calculate monthly revenue (assuming 3000 RSD per active member)
         const monthlyRevenue = activeMembers * 3000;
@@ -205,8 +245,13 @@ export default function AdminPanel() {
         for (let i = 6; i >= 0; i--) {
           const date = subDays(new Date(), i);
           const count = checkInsData.filter(c => {
-            const checkInDate = parseISO(c.checkInTime);
-            return format(checkInDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+            try {
+              if (!c.checkInTime) return false;
+              const checkInDate = parseISO(c.checkInTime);
+              return format(checkInDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+            } catch {
+              return false;
+            }
           }).length;
           weeklyCheckIns.push(count);
         }
@@ -232,8 +277,13 @@ export default function AdminPanel() {
           const date = subDays(new Date(), i * 30);
           const monthIndex = date.getMonth();
           const monthMembers = usersData.filter(u => {
-            const createdDate = parseISO(u.createdAt);
-            return createdDate <= date && u.membership?.active;
+            try {
+              if (!u.createdAt) return false;
+              const createdDate = parseISO(u.createdAt);
+              return createdDate <= date && u.membership?.active;
+            } catch {
+              return false;
+            }
           }).length;
 
           revenueHistory.push({
@@ -304,11 +354,11 @@ export default function AdminPanel() {
     }
   };
 
-  // Filter users based on search
-  const filteredUsers = users.filter(user =>
+  // Filter users based on search (with safety check)
+  const filteredUsers = Array.isArray(users) ? users.filter(user =>
     user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
 
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -971,10 +1021,10 @@ export default function AdminPanel() {
             }}>
               <h3 style={{ marginBottom: '20px' }}>Nedeljne prijave</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={statistics?.weeklyCheckIns.map((count, index) => ({
+                <BarChart data={statistics?.weeklyCheckIns && Array.isArray(statistics.weeklyCheckIns) ? statistics.weeklyCheckIns.map((count, index) => ({
                   day: ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'][new Date(subDays(new Date(), 6 - index)).getDay()],
                   count
-                }))}>
+                })) : []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                   <XAxis dataKey="day" stroke="#999" />
                   <YAxis stroke="#999" />
