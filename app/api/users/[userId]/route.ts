@@ -27,10 +27,13 @@ export async function PATCH(
       );
     }
 
-    // Check if user is admin
-    if (!isAdmin(payload)) {
+    // Allow users to update their own account OR admins to update any account
+    const isSelfUpdate = userId === payload.userId;
+    const isAdminUpdate = isAdmin(payload);
+
+    if (!isSelfUpdate && !isAdminUpdate) {
       return NextResponse.json(
-        { error: 'Forbidden: Admin access required' },
+        { error: 'Forbidden: You can only update your own account' },
         { status: 403 }
       );
     }
@@ -126,10 +129,13 @@ export async function DELETE(
       );
     }
 
-    // Check if user is admin
-    if (!isAdmin(payload)) {
+    // Allow users to delete their own account OR admins to delete any account
+    const isSelfDelete = userId === payload.userId;
+    const isAdminDelete = isAdmin(payload) && userId !== payload.userId;
+
+    if (!isSelfDelete && !isAdminDelete) {
       return NextResponse.json(
-        { error: 'Forbidden: Admin access required' },
+        { error: 'Forbidden: You can only delete your own account' },
         { status: 403 }
       );
     }
@@ -146,13 +152,8 @@ export async function DELETE(
       );
     }
 
-    // Prevent admin from deleting themselves
-    if (userId === payload.userId) {
-      return NextResponse.json(
-        { error: 'Cannot delete your own account' },
-        { status: 400 }
-      );
-    }
+    // Log account deletion for audit
+    console.log(`User ${payload.userId} is deleting account ${userId}`);
 
     // Delete user (cascading delete will handle membership and checkins)
     await prisma.user.delete({
